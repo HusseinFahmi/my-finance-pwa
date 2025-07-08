@@ -1,0 +1,2233 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مديري المالي الذكي</title>
+
+    <!-- إعدادات PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4A90E2">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2983/2983787.png">
+
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js for beautiful charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Day.js for date manipulation -->
+    <script src="https://cdn.jsdelivr.net/npm/dayjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs/plugin/relativeTime.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs/plugin/isBetween.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs/plugin/isoWeek.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs/plugin/quarterOfYear.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs/locale/ar.js"></script>
+
+    <!-- SweetAlert2 for beautiful alerts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Custom Styles and Animations -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-family: 'Cairo', 'sans-serif';
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .dark ::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        #splash-screen {
+            transition: opacity 0.5s ease-out;
+        }
+
+        .view {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-content,
+        #mobile-drawer {
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .nav-item.active svg,
+        .nav-item.active span {
+            color: #3b82f6;
+        }
+
+        .dark .nav-item.active svg,
+        .dark .nav-item.active span {
+            color: #60a5fa;
+        }
+
+        .nav-item.active svg {
+            transform: scale(1.1);
+        }
+
+        .summary-card {
+            animation: popIn 0.3s ease-out;
+        }
+
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans overflow-x-hidden">
+
+    <!-- =========== SPLASH SCREEN =========== -->
+    <div id="splash-screen" class="fixed inset-0 bg-gray-900 flex flex-col justify-center items-center z-50">
+        <svg class="w-24 h-24 text-blue-500 animate-pulse" xmlns="http://www.w3.org/2000/svg" fill="none"
+            viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0h.75A.75.75 0 015.25 6v.75m0 0v-.75A.75.75 0 014.5 5.25h-.75M6 15v.75a.75.75 0 01-.75.75H4.5m0 0v-.75a.75.75 0 01.75-.75h.75m0 0h.75a.75.75 0 01.75.75v.75m0 0v-.75a.75.75 0 01-.75-.75h-.75m9-6h.008v.008H15V9h-.008V9zm0 3h.008v.008H15v-.008zm0 3h.008v.008H15v-.008zm0-6h.008v.008H15V9h-.008V9z" />
+        </svg>
+        <h1 class="text-2xl font-bold text-white mt-4">مديري المالي الذكي</h1>
+        <p class="text-gray-400 mt-2">جاري تحميل بياناتك المالية...</p>
+    </div>
+
+    <!-- =========== MAIN APPLICATION CONTAINER =========== -->
+    <div id="app-container" class="max-w-7xl mx-auto opacity-0 transition-opacity duration-500">
+        <!-- =========== MOBILE HEADER =========== -->
+        <header
+            class="lg:hidden fixed top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-md h-16 flex items-center justify-between px-4 z-30">
+            <div class="flex items-center space-x-2 space-x-reverse">
+                <svg class="w-8 h-8 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0h.75A.75.75 0 015.25 6v.75m0 0v-.75A.75.75 0 014.5 5.25h-.75M6 15v.75a.75.75 0 01-.75.75H4.5m0 0v-.75a.75.75 0 01.75-.75h.75m0 0h.75a.75.75 0 01.75.75v.75m0 0v-.75a.75.75 0 01-.75-.75h-.75m9-6h.008v.008H15V9h-.008V9zm0 3h.008v.008H15v-.008zm0 3h.008v.008H15v-.008zm0-6h.008v.008H15V9h-.008V9z" />
+                </svg>
+                <span class="text-lg font-bold">مديري المالي</span>
+            </div>
+            <button id="mobile-menu-btn" class="p-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </header>
+
+        <div class="lg:flex">
+            <nav id="desktop-nav"
+                class="hidden lg:flex flex-col w-64 p-4 bg-white dark:bg-gray-800 h-screen fixed top-0 right-0 shadow-xl">
+            </nav>
+            <main id="main-content" class="w-full pt-20 p-4 pb-24 lg:mr-64 lg:pt-8 lg:p-8"></main>
+        </div>
+
+        <div id="mobile-drawer-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+        <nav id="mobile-drawer"
+            class="lg:hidden fixed top-0 -right-full w-64 h-full bg-white dark:bg-gray-800 shadow-2xl z-40 p-4"></nav>
+
+        <button id="add-item-btn"
+            class="fixed bottom-20 right-4 lg:bottom-8 lg:left-8 lg:right-auto bg-blue-500 hover:bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transform hover:scale-110 transition-all z-20">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+        </button>
+
+        <nav
+            class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg lg:hidden z-20">
+            <div id="mobile-bottom-nav" class="flex justify-around h-16"></div>
+        </nav>
+    </div>
+
+    <!-- Modals -->
+    <div id="transaction-modal"
+        class="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-40 hidden">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 max-w-md p-6 transform scale-95">
+            <h2 id="transaction-modal-title" class="text-2xl font-bold mb-4 text-gray-900 dark:text-white"></h2>
+            <form id="transaction-form">
+                <input type="hidden" id="transaction-id">
+                <div class="mb-4"><label for="transaction-account"
+                        class="block text-sm font-medium">الحساب</label><select id="transaction-account"
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
+                </div>
+                <div class="mb-4"><label for="transaction-type" class="block text-sm font-medium">النوع</label><select
+                        id="transaction-type"
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
+                </div>
+                <div class="mb-4"><label for="transaction-amount" class="block text-sm font-medium">المبلغ</label><input
+                        type="number" step="0.01" id="transaction-amount" placeholder="0.00" required
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4"><label for="transaction-category"
+                        class="block text-sm font-medium">الفئة</label><select id="transaction-category" required
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
+                </div>
+                <div class="mb-4"><label for="transaction-date" class="block text-sm font-medium">التاريخ</label><input
+                        type="date" id="transaction-date" required
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-6"><label for="transaction-notes" class="block text-sm font-medium">ملاحظات
+                        (اختياري)</label><textarea id="transaction-notes" rows="2"
+                        placeholder="مثال: فاتورة كهرباء شهر مايو"
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 space-x-reverse"><button type="button"
+                        class="cancel-modal-btn px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">إلغاء</button><button
+                        type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="debt-modal" class="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-40 hidden">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 max-w-md p-6 transform scale-95">
+            <h2 id="debt-modal-title" class="text-2xl font-bold mb-4"></h2>
+            <form id="debt-form">
+                <input type="hidden" id="debt-id">
+                <div class="mb-4"><label for="debt-account" class="block text-sm font-medium">الحساب</label><select
+                        id="debt-account"
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></select>
+                </div>
+                <div class="mb-4"><label for="debt-type" class="block text-sm font-medium">نوع الدين</label><select
+                        id="debt-type"
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="borrowed">دين علي (آخذ سلفة)</option>
+                        <option value="lent">دين لي (أُقرِضُ آخر)</option>
+                    </select></div>
+                <div class="mb-4"><label for="debt-amount" class="block text-sm font-medium">المبلغ</label><input
+                        type="number" step="0.01" id="debt-amount" placeholder="0.00" required
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4"><label for="debt-person" class="block text-sm font-medium">الطرف الآخر</label><input
+                        type="text" id="debt-person" placeholder="اسم الشخص أو الجهة" required
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-4"><label for="debt-date" class="block text-sm font-medium">تاريخ الدين</label><input
+                        type="date" id="debt-date" required
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-6"><label for="debt-notes" class="block text-sm font-medium">ملاحظات
+                        (اختياري)</label><textarea id="debt-notes" rows="2"
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 space-x-reverse"><button type="button"
+                        class="cancel-modal-btn px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">إلغاء</button><button
+                        type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">حفظ
+                        الدين</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="account-modal" class="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-40 hidden">
+        <div
+            class="modal-content bg-white dark:bg-gray-800 rounded-lg shadow-xl w-11/12 max-w-md p-6 transform scale-95">
+            <h2 id="account-modal-title" class="text-2xl font-bold mb-4"></h2>
+            <form id="account-form">
+                <input type="hidden" id="account-id">
+                <div class="mb-4"><label for="account-name" class="block text-sm font-medium">اسم الحساب</label><input
+                        type="text" id="account-name" placeholder="مثال: بنك الراجحي، كاش..." required
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="mb-6"><label for="account-currency" class="block text-sm font-medium">عملة
+                        الحساب</label><input type="text" id="account-currency" placeholder="SAR, YER, USD..." required
+                        class="mt-1 block w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex justify-end space-x-3 space-x-reverse"><button type="button"
+                        class="cancel-modal-btn px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500">إلغاء</button><button
+                        type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-autotable@3.5.23/dist/jspdf.plugin.autotable.js"></script>
+
+
+
+    <script>
+        // =================================================================================
+        // ========================|| SMART FINANCE TRACKER SCRIPT ||=======================
+        // =================================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const mainContent = document.getElementById('main-content');
+            const appContainer = document.getElementById('app-container');
+            const splashScreen = document.getElementById('splash-screen');
+            const transactionModal = document.getElementById('transaction-modal');
+            const debtModal = document.getElementById('debt-modal');
+            const accountModal = document.getElementById('account-modal');
+            const addItemBtn = document.getElementById('add-item-btn');
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileDrawer = document.getElementById('mobile-drawer');
+            const mobileDrawerOverlay = document.getElementById('mobile-drawer-overlay');
+
+            let state = {};
+            let currentView = 'dashboard';
+            let charts = {};
+
+            dayjs.extend(dayjs_plugin_relativeTime);
+            dayjs.extend(dayjs_plugin_isBetween);
+            dayjs.extend(dayjs_plugin_isoWeek);
+            dayjs.extend(dayjs_plugin_quarterOfYear);
+            dayjs.locale('ar');
+
+            // === STATE MANAGEMENT ===
+            function getInitialState() {
+                return {
+                    settings: {
+                        theme: 'light',
+                        accounts: [
+                            { id: 'acc-yer-cash', name: 'كاش (YER)', currency: 'YER' },
+                            { id: 'acc-sar-cash', name: 'كاش (SAR)', currency: 'SAR' },
+                            { id: 'acc-usd-cash', name: 'كاش (USD)', currency: 'USD' },
+                        ],
+                    },
+                    categories: [
+                        { id: 'cat-1', name: ' سكن', icon: '🏠', type: 'expense' },
+                        { id: 'cat-2', name: ' طعام وشراب', icon: '🍔', type: 'expense' },
+                        { id: 'cat-3', name: ' مواصلات', icon: '🚗', type: 'expense' },
+                        { id: 'cat-4', name: ' تسوق', icon: '🛒', type: 'expense' },
+                        { id: 'cat-5', name: ' صحة', icon: '💊', type: 'expense' },
+                        { id: 'cat-6', name: ' ترفيه', icon: '🎭', type: 'expense' },
+                        { id: 'cat-7', name: ' فواتير وخدمات', icon: '💡', type: 'expense' },
+                        { id: 'cat-11', name: ' انترنت', icon: '🌐', type: 'expense' },
+                        { id: 'cat-10', name: ' أخرى', icon: '💸', type: 'expense' },
+                        { id: 'cat-8', name: ' راتب', icon: '💰', type: 'income' },
+                        { id: 'cat-9', name: ' هدايا', icon: '🎁', type: 'income' },
+                        { id: 'internal-transfer-out', name: 'تحويل داخلي صادر', icon: '📤', type: 'expense' },
+                        { id: 'exchange-out', name: ' تحويل صادر', icon: '📤', type: 'expense' },
+                        { id: 'debt-paid', name: ' سداد دين', icon: '🧾', type: 'expense' },
+                        { id: 'debt-given', name: ' إعطاء سلفة', icon: '📤', type: 'expense' },
+                        { id: 'internal-transfer-in', name: 'تحويل داخلي وارد', icon: '📥', type: 'income' },
+                        { id: 'exchange-in', name: ' تحويل وارد', icon: '📥', type: 'income' },
+                        { id: 'debt-collected', name: ' تحصيل دين', icon: '💵', type: 'income' },
+                        { id: 'debt-received', name: ' استلام سلفة', icon: '🤝', type: 'income' },
+                    ],
+                    transactions: [],
+                    debts: [],
+                    budgets: {}
+                };
+            }
+
+            function loadState() {
+                const savedState = localStorage.getItem('financeTrackerState');
+                const initialState = getInitialState();
+                state = savedState ? JSON.parse(savedState) : initialState;
+
+                if (state.settings && Array.isArray(state.settings.accounts) && typeof state.settings.accounts[0] === 'string') {
+                    state.settings.accounts = initialState.settings.accounts;
+                }
+                if (!state.settings.accounts || state.settings.accounts.length === 0) {
+                    state.settings.accounts = initialState.settings.accounts;
+                }
+
+                state.transactions.forEach(tx => {
+                    if (tx.currency && !tx.accountId) {
+                        const defaultAccount = state.settings.accounts.find(acc => acc.currency === tx.currency);
+                        tx.accountId = defaultAccount ? defaultAccount.id : null;
+                    }
+                });
+                state.debts.forEach(debt => {
+                    if (debt.currency && !debt.accountId) {
+                        const defaultAccount = state.settings.accounts.find(acc => acc.currency === debt.currency);
+                        debt.accountId = defaultAccount ? defaultAccount.id : null;
+                    }
+                });
+
+                if (!state.categories.find(c => c.id === 'internal-transfer-in')) state.categories = initialState.categories;
+                if (!state.budgets) state.budgets = initialState.budgets;
+                if (!state.debts) state.debts = initialState.debts;
+
+                saveState();
+            }
+
+            function saveState() {
+                localStorage.setItem('financeTrackerState', JSON.stringify(state));
+            }
+
+            // === UTILITY FUNCTIONS ===
+            const generateId = () => `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const formatCurrency = (amount, currency) => new Intl.NumberFormat('en', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount);
+            const getAccountById = (id) => state.settings.accounts.find(acc => acc.id === id);
+            const getCategoryById = (id) => state.categories.find(c => c.id === id) || { name: 'غير معروف', icon: '❓' };
+            const getUniqueCurrencies = () => [...new Set(state.settings.accounts.map(acc => acc.currency))];
+
+            function calculateMonthlyMetrics(transactions) {
+                const metrics = {
+                    actualIncome: 0,
+                    actualExpense: 0,
+                    loansGiven: 0,
+                    loansReceived: 0,
+                    exchangeIn: 0,
+                    exchangeOut: 0,
+                    net: 0,
+                };
+
+                transactions.forEach(tx => {
+                    if (tx.type === 'income') {
+                        switch (tx.category) {
+                            case 'debt-received':
+                                metrics.loansReceived += tx.amount;
+                                break;
+                            case 'exchange-in':
+                                metrics.exchangeIn += tx.amount;
+                                break;
+                            case 'debt-collected':
+                            case 'internal-transfer-in':
+                                // These are repayment/internal transfers, not "new" income.
+                                break;
+                            default:
+                                metrics.actualIncome += tx.amount;
+                                break;
+                        }
+                    } else if (tx.type === 'expense') {
+                        switch (tx.category) {
+                            case 'debt-given':
+                                metrics.loansGiven += tx.amount;
+                                break;
+                            case 'exchange-out':
+                                metrics.exchangeOut += tx.amount;
+                                break;
+                            case 'debt-paid':
+                            case 'internal-transfer-out':
+                                // These are repayment/internal transfers, not "new" expenses.
+                                break;
+                            default:
+                                metrics.actualExpense += tx.amount;
+                                break;
+                        }
+                    }
+                });
+
+                metrics.net = metrics.actualIncome - metrics.actualExpense;
+                return metrics;
+            }
+
+
+            // === UI & NAVIGATION ===
+            function buildNavigation() {
+                const navItems = [
+                    { view: 'dashboard', label: 'الرئيسية', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>' },
+                    { view: 'accounts', label: 'الحسابات', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>' },
+                    { view: 'transactions', label: 'العمليات', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>' },
+                    { view: 'monthlySummary', label: 'ملخص الأشهر', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>' },
+                    { view: 'debts', label: 'الديون', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8h6m-5 4h4m5 6H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2z" /></svg>' },
+                    { view: 'budgets', label: 'الميزانيات', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M9 10h.01M15 10h.01M9 14h6" /></svg>' },
+                    { view: 'reports', label: 'التقارير', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>' },
+                    { view: 'settings', label: 'الإعدادات', icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826 3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>' }
+                ];
+
+                const desktopNavContainer = document.getElementById('desktop-nav');
+                const mobileDrawerContainer = document.getElementById('mobile-drawer');
+                const mobileBottomNavContainer = document.getElementById('mobile-bottom-nav');
+
+                const desktopNavHeader = `<div class="flex items-center space-x-2 space-x-reverse mb-8"><svg class="w-10 h-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.75A.75.75 0 013 4.5h.75m0 0h.75A.75.75 0 015.25 6v.75m0 0v-.75A.75.75 0 014.5 5.25h-.75M6 15v.75a.75.75 0 01-.75.75H4.5m0 0v-.75a.75.75 0 01.75-.75h.75m0 0h.75a.75.75 0 01.75.75v.75m0 0v-.75a.75.75 0 01-.75-.75h-.75m9-6h.008v.008H15V9h-.008V9zm0 3h.008v.008H15v-.008zm0 3h.008v.008H15v-.008zm0-6h.008v.008H15V9h-.008V9z" /></svg><span class="text-xl font-bold">مديري المالي</span></div><div class="space-y-2">`;
+
+                desktopNavContainer.innerHTML = desktopNavHeader + navItems.map(item => createNavItem(item, 'desktop')).join('') + '</div>';
+                mobileDrawerContainer.innerHTML = desktopNavHeader + navItems.map(item => createNavItem(item, 'desktop')).join('') + '</div>';
+
+                const bottomNavItems = navItems.slice(0, 5);
+                mobileBottomNavContainer.innerHTML = bottomNavItems.map(item => createNavItem(item, 'mobile')).join('');
+
+                attachNavListeners();
+            }
+
+            function createNavItem(item, type) {
+                if (type === 'desktop') {
+                    return `<button data-view="${item.view}" class="nav-item w-full flex items-center space-x-3 space-x-reverse p-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">${item.icon}<span class="font-semibold">${item.label}</span></button>`;
+                }
+                if (type === 'mobile') {
+                    return `<button data-view="${item.view}" class="nav-item flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">${item.icon}<span class="text-xs mt-1">${item.label}</span></button>`;
+                }
+            }
+
+            function renderView(viewName, params = {}) {
+                currentView = viewName;
+                mainContent.innerHTML = '';
+                let viewContent = '';
+
+                const fabVisibleViews = ['transactions', 'debts'];
+                addItemBtn.classList.toggle('hidden', !fabVisibleViews.includes(viewName));
+
+                destroyCharts();
+
+                switch (viewName) {
+                    case 'dashboard': viewContent = getDashboardView(); break;
+                    case 'accounts': viewContent = getAccountsView(params.accountId); break;
+                    case 'transactions': viewContent = getTransactionsView(); break;
+                    case 'monthlySummary': viewContent = getMonthlySummaryView(); break;
+                    case 'debts': viewContent = getDebtsView(); break;
+                    case 'budgets': viewContent = getBudgetsView(); break;
+                    case 'reports': viewContent = getReportsView(); break;
+                    case 'settings': viewContent = getSettingsView(); break;
+                }
+                mainContent.innerHTML = `<div class="view">${viewContent}</div>`;
+
+                const postRenderActions = {
+                    dashboard: renderDashboardData,
+                    accounts: () => attachAccountsListeners(params.accountId),
+                    transactions: () => { renderTransactionsList(getUniqueCurrencies()[0] || ''); attachTransactionsListeners(); },
+                    monthlySummary: () => { renderMonthlySummary(); attachMonthlySummaryListeners(); },
+                    debts: () => { renderDebtsList(getUniqueCurrencies()[0] || ''); attachDebtsListeners(); },
+                    budgets: () => { renderViewWithBudgets(getUniqueCurrencies()[0] || '', dayjs().format('YYYY-MM')); },
+                    reports: () => { renderReportsCharts(getUniqueCurrencies()[0] || ''); attachReportsListeners(); },
+                    settings: attachSettingsListeners,
+                };
+                postRenderActions[viewName]?.();
+
+                updateActiveNav();
+                closeMobileDrawer();
+            }
+
+            function updateActiveNav() {
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.toggle('active', item.dataset.view === currentView);
+                });
+            }
+
+            function openMobileDrawer() {
+                mobileDrawerOverlay.classList.remove('hidden');
+                mobileDrawer.classList.remove('-right-full');
+                mobileDrawer.classList.add('right-0');
+            }
+
+            function closeMobileDrawer() {
+                mobileDrawerOverlay.classList.add('hidden');
+                mobileDrawer.classList.add('-right-full');
+                mobileDrawer.classList.remove('right-0');
+            }
+
+            function getDashboardView() {
+                const currencies = getUniqueCurrencies();
+                if (currencies.length === 0) {
+                    return `<div class="text-center p-8 bg-white dark:bg-gray-800 rounded-lg shadow">
+                    <h3 class="text-xl font-bold">مرحباً بك!</h3>
+                    <p class="text-gray-500 mt-2">يبدو أنك لم تقم بإضافة أي حساب بعد.</p>
+                    <button data-view="settings" class="nav-item mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">اذهب إلى الإعدادات لإضافة حساب</button>
+                </div>`;
+                }
+
+                const balanceCards = currencies.map(currency => `
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 space-y-4">
+                    <div>
+                        <p class="text-lg text-gray-500 dark:text-gray-400">الرصيد (${currency})</p>
+                        <p id="dashboard-balance-${currency}" class="text-3xl font-bold text-gray-900 dark:text-white mt-2"></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-center">
+                        <div class="bg-green-100 dark:bg-green-900/50 p-2 rounded-lg"><p class="text-xs text-green-800 dark:text-green-300">دخل الشهر</p><p id="dashboard-income-${currency}" class="text-md font-bold text-green-900 dark:text-green-200"></p></div>
+                        <div class="bg-red-100 dark:bg-red-900/50 p-2 rounded-lg"><p class="text-xs text-red-800 dark:text-red-300">مصروفات الشهر</p><p id="dashboard-expense-${currency}" class="text-md font-bold text-red-900 dark:text-red-200"></p></div>
+                        <div class="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-lg"><p class="text-xs text-blue-800 dark:text-blue-300">سلف معطاة</p><p id="dashboard-given-loans-${currency}" class="text-md font-bold text-blue-900 dark:text-blue-200"></p></div>
+                        <div class="bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded-lg"><p class="text-xs text-yellow-800 dark:text-yellow-300">سلف مستلمة</p><p id="dashboard-received-loans-${currency}" class="text-md font-bold text-yellow-900 dark:text-yellow-200"></p></div>
+                        <div class="bg-teal-100 dark:bg-teal-900/60 p-2 rounded-lg"><p class="text-xs text-teal-800 dark:text-teal-300">إضافة مصارفة</p><p id="dashboard-exchange-in-${currency}" class="text-md font-bold text-teal-900 dark:text-teal-200"></p></div>
+                        <div class="bg-pink-100 dark:bg-pink-900/60 p-2 rounded-lg"><p class="text-xs text-pink-800 dark:text-pink-300">خصم مصارفة</p><p id="dashboard-exchange-out-${currency}" class="text-md font-bold text-pink-900 dark:text-pink-200"></p></div>
+                    </div>
+                    <div id="dashboard-net-month-container-${currency}" class="p-3 rounded-lg text-center">
+                        <p class="text-sm">صافي الشهر</p>
+                        <p id="dashboard-net-month-${currency}" class="text-2xl font-bold"></p>
+                    </div>
+                </div>
+            `).join('');
+
+                const debtCards = currencies.map(currency => `
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+                    <p class="font-semibold text-gray-700 dark:text-gray-300">الديون (${currency})</p>
+                    <div class="flex justify-between items-center mt-2">
+                        <div><p class="text-sm text-green-600 dark:text-green-400">لك</p><p id="dashboard-lent-${currency.toLowerCase()}" class="text-xl font-bold text-green-700 dark:text-green-300"></p></div>
+                        <div><p class="text-sm text-red-600 dark:text-red-400">عليك</p><p id="dashboard-borrowed-${currency.toLowerCase()}" class="text-xl font-bold text-red-700 dark:text-red-300"></p></div>
+                    </div>
+                </div>
+            `).join('');
+
+                return `
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">ملخص هذا الشهر</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">${balanceCards}</div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">ملخص الديون غير المسددة</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">${debtCards}</div>
+                    </div>
+                    <div><h3 class="text-xl font-bold mb-2">أحدث العمليات (للعرض فقط)</h3><div id="dashboard-recent-transactions" class="space-y-3"></div></div>
+                </div>
+            `;
+            }
+
+            function getAccountsView(accountId = null) {
+                if (accountId) {
+                    return getAccountDetailView(accountId);
+                }
+                const allTimeTotals = calculateTotals();
+                const accountCards = state.settings.accounts.map(account => {
+                    const balance = allTimeTotals.accounts[account.id]?.balance || 0;
+                    return `<button data-account-id="${account.id}" class="account-card-btn bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-200">
+                        <p class="text-lg text-gray-500 dark:text-gray-400">${account.name}</p>
+                        <p class="text-4xl font-bold text-gray-900 dark:text-white mt-2">${formatCurrency(balance, account.currency)}</p>
+                    </button>`;
+                }).join('');
+
+                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
+
+                return `
+                <div class="space-y-6">
+                    <h2 class="text-2xl font-bold">الحسابات وأرصدتها</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${accountCards || '<p>لا توجد حسابات. أضف حساباً من الإعدادات.</p>'}</div>
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                         <h3 class="text-xl font-semibold mb-4">تحويل داخلي (بين حسابات بنفس العملة)</h3>
+                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div><label for="internal-transfer-from" class="block text-sm">من حساب</label><select id="internal-transfer-from" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded">${accountOptions}</select></div>
+                            <div><label for="internal-transfer-amount" class="block text-sm">المبلغ</label><input type="number" id="internal-transfer-amount" placeholder="0.00" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded"></div>
+                            <div><label for="internal-transfer-to" class="block text-sm">إلى حساب</label><select id="internal-transfer-to" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded">${accountOptions}</select></div>
+                         </div>
+                         <button id="execute-internal-transfer-btn" class="w-full mt-4 px-4 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-bold transition">تنفيذ التحويل الداخلي</button>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                         <h3 class="text-xl font-semibold mb-4">تحويل عملات (مصارفة)</h3>
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <div>
+                                <label for="exchange-from-amount" class="block text-sm">المبلغ المحول</label>
+                                <div class="flex mt-1">
+                                    <input type="number" id="exchange-from-amount" placeholder="0.00" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-r-md">
+                                    <select id="exchange-from-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-l-md">${accountOptions}</select>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="exchange-rate" class="block text-sm">سعر الصرف (<span id="exchange-rate-helper"></span>)</label>
+                                <div class="flex mt-1">
+                                    <input type="number" step="any" id="exchange-rate" placeholder="سعر الصرف" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-r-md">
+                                    <select id="exchange-to-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-l-md">${accountOptions}</select>
+                                </div>
+                            </div>
+                         </div>
+                         <div class="mt-4 bg-blue-100 dark:bg-blue-900/50 p-3 rounded-lg text-center">
+                            <p class="text-sm text-blue-800 dark:text-blue-300">سيصل إلى حسابك</p>
+                            <p id="exchange-result" class="text-2xl font-bold text-blue-900 dark:text-blue-200">0.00</p>
+                         </div>
+                         <button id="execute-exchange-btn" class="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition">تنفيذ المصارفة</button>
+                    </div>
+                </div>
+            `;
+            }
+
+            function getAccountDetailView(accountId) {
+                const account = getAccountById(accountId);
+                if (!account) return `<p>الحساب غير موجود.</p>`;
+                return `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold">تفاصيل حساب : ${account.name} <span class="text-gray-500 font-semibold">${account.currency}</span></h2>
+                        <button id="back-to-accounts-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-sm rounded-md hover:bg-gray-300">العودة للحسابات</button>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                            <input type="text" id="search-input" placeholder="ابحث..." class="col-span-1 sm:col-span-2 md:col-span-1 w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2">
+                             <select id="filter-period" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2">
+                                <option value="all">كل الأوقات</option>
+                                <option value="week">هذا الأسبوع</option>
+                                <option value="month">هذا الشهر</option>
+                                <option value="year">هذه السنة</option>
+                            </select>
+                            <select id="filter-category" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2">
+                                <option value="all">كل الفئات</option>
+                                ${state.categories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+                            </select>
+                            <select id="filter-type" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2">
+                                <option value="all">كل الأنواع</option>
+                                <option value="income">الدخل فقط</option>
+                                <option value="expense">المصروفات فقط</option>
+                            </select>
+                            <select id="sort-date" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2">
+                                <option value="desc">الأحدث أولاً</option>
+                                <option value="asc">الأقدم أولاً</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="transactions-list" class="space-y-3" data-account-id="${accountId}"></div>
+                </div>
+            `;
+            }
+
+
+            function getTransactionsView() {
+                return `
+                <div class="space-y-4">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                        <h2 class="text-2xl font-bold">سجل العمليات</h2>
+                        <div id="transaction-currency-tabs" class="flex space-x-1 space-x-reverse bg-gray-200 dark:bg-gray-700 p-1 rounded-lg"></div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
+                        <div class="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                            <input type="text" id="search-input" placeholder="ابحث بالوصف..." class="col-span-2 lg:col-span-1 w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                            <select id="filter-category" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="all">كل الفئات</option>
+                                ${state.categories.map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('')}
+                            </select>
+                            <select id="filter-type" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="all">كل الأنواع</option>
+                                <option value="income">الدخل فقط</option>
+                                <option value="expense">المصروفات فقط</option>
+                            </select>
+                            <select id="filter-period" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="all">كل الأوقات</option>
+                                <option value="week">هذا الأسبوع</option>
+                                <option value="month">هذا الشهر</option>
+                                <option value="year">هذه السنة</option>
+                            </select>
+                            <select id="sort-date" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="desc">الأحدث أولاً</option>
+                                <option value="asc">الأقدم أولاً</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="transactions-summary-container" class="hidden"></div>
+                    <div id="transactions-list" class="space-y-3"></div>
+                </div>`;
+            }
+
+            function getMonthlySummaryView() {
+                const currentYear = dayjs().year();
+                const transactionYears = state.transactions.map(tx => dayjs(tx.date).year());
+                const years = [...new Set([currentYear, ...transactionYears])].sort((a, b) => b - a);
+                const yearOptions = years.map(y => `<option value="${y}">${y}</option>`).join('');
+
+                return `
+                <div class="space-y-6">
+                    <h2 class="text-2xl font-bold">ملخص الأشهر</h2>
+                    <div id="yearly-summary-bar" class="bg-blue-100 dark:bg-blue-900/50 p-4 rounded-lg hidden"></div>
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <select id="summary-year-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="all">كل السنوات</option>
+                                ${yearOptions}
+                            </select>
+                            <select id="summary-half-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="all">النصف السنوي</option>
+                                <option value="1">النصف الأول (H1)</option>
+                                <option value="2">النصف الثاني (H2)</option>
+                            </select>
+                            <select id="summary-quarter-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="all">الربع السنوي</option>
+                                <option value="1">الربع الأول (Q1)</option>
+                                <option value="2">الربع الثاني (Q2)</option>
+                                <option value="3">الربع الثالث (Q3)</option>
+                                <option value="4">الربع الرابع (Q4)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="monthly-summary-list" class="space-y-6"></div>
+                </div>
+            `;
+            }
+
+            function getDebtsView() {
+                return `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold">إدارة الديون</h2>
+                        <div id="debt-currency-tabs" class="flex space-x-1 space-x-reverse bg-gray-200 dark:bg-gray-700 p-1 rounded-lg"></div>
+                    </div>
+                     <div class="mt-4">
+                        <input type="text" id="debt-search-input" placeholder="ابحث باسم الشخص..." class="w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded-md p-2 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    </div>
+                    <div id="debt-summary-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    <div id="debt-lists-container"></div>
+                </div>`;
+            }
+
+            function getBudgetsView(activeCurrency = getUniqueCurrencies()[0], month = dayjs().format('YYYY-MM')) {
+                const expenseCategories = state.categories.filter(c => c.type === 'expense' && !c.id.startsWith('exchange') && !c.id.startsWith('debt') && !c.id.startsWith('internal-transfer'));
+                const currencyBudgets = state.budgets[activeCurrency] || {};
+                const totalBudget = Object.values(currencyBudgets).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+
+                let categoriesHTML = expenseCategories.map(cat => {
+                    const budget = currencyBudgets[cat.id] || 0;
+                    const spent = calculateSpentForCategory(cat.id, dayjs(month), activeCurrency);
+                    const progress = budget > 0 ? (spent / budget) * 100 : 0;
+                    const progressColor = progress > 100 ? 'bg-red-500' : progress > 80 ? 'bg-yellow-500' : 'bg-blue-500';
+
+                    return `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+                        <div class="flex items-center justify-between mb-2">
+                             <div class="flex items-center space-x-2 space-x-reverse"><span class="text-2xl">${cat.icon}</span><span class="font-semibold">${cat.name}</span></div>
+                             ${dayjs(month).isSame(dayjs(), 'month') ?
+                            `<input type="number" data-cat-id="${cat.id}" value="${budget || ''}" placeholder="0" class="budget-input w-28 text-left bg-gray-100 dark:bg-gray-700 rounded p-1 focus:ring-2 focus:ring-blue-500 border-transparent">`
+                            : `<span class="font-bold">${formatCurrency(budget, activeCurrency)}</span>`
+                        }
+                        </div>
+                        <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+                            <span>المصروف: ${formatCurrency(spent, activeCurrency)}</span>
+                            <span>الميزانية: ${formatCurrency(budget, activeCurrency)}</span>
+                        </div>
+                        <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                            <div class="${progressColor} h-2.5 rounded-full" style="width: ${Math.min(progress, 100)}%;"></div>
+                        </div>
+                        ${progress > 100 ? `<p class="text-red-500 text-xs mt-1 font-bold text-center animate-pulse">! تم تجاوز الميزانية المحددة</p>` : ''}
+                    </div>`;
+                }).join('');
+
+                const currencyTabs = getUniqueCurrencies().map(c => `
+                <button data-currency="${c}" class="budget-currency-tab px-3 py-1 text-sm font-medium rounded-md ${c === activeCurrency ? 'bg-blue-500 text-white shadow' : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'}">${c}</button>
+            `).join('');
+
+                return `
+                <div id="budgets-container" class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                        <h2 class="text-2xl font-bold">الميزانيات</h2>
+                         <div class="flex items-center gap-2">
+                            <input type="month" id="budget-month-filter" value="${month}" class="bg-gray-100 dark:bg-gray-700 p-2 rounded-md border-transparent focus:ring-2 focus:ring-blue-500">
+                            <div class="flex space-x-1 space-x-reverse bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">${currencyTabs}</div>
+                        </div>
+                    </div>
+                    <div class="bg-blue-100 dark:bg-blue-900/50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-blue-800 dark:text-blue-300">الميزانية الإجمالية لشهر ${dayjs(month).format("MMMM YYYY")} (${activeCurrency})</h3>
+                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-200">${formatCurrency(totalBudget, activeCurrency)}</p>
+                    </div>
+                    <div id="category-budgets-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">${categoriesHTML}</div>
+                    ${dayjs(month).isSame(dayjs(), 'month') ?
+                        `<button id="save-budgets-btn" data-currency="${activeCurrency}" class="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold transition">حفظ ميزانيات ${activeCurrency}</button>`
+                        : '<p class="text-center text-sm text-gray-500 dark:text-gray-400">يمكن تعديل ميزانية الشهر الحالي فقط.</p>'
+                    }
+                </div>
+            `;
+            }
+
+            function getReportsView() {
+                const currencyTabs = getUniqueCurrencies().map((c, index) => `
+                <button data-currency="${c}" class="report-currency-tab px-4 py-2 text-sm font-medium rounded-md ${index === 0 ? 'bg-blue-500 text-white shadow' : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'}">${c}</button>
+            `).join('');
+
+                return `
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                        <h2 class="text-2xl font-bold">التقارير المالية</h2>
+                        <div class="flex space-x-1 space-x-reverse bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">${currencyTabs}</div>
+                    </div>
+                    <div id="charts-container" class="space-y-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4"><h3 class="font-semibold mb-2">المصروفات حسب الفئة (آخر 30 يوم)</h3><canvas id="expense-pie-chart"></canvas></div>
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4"><h3 class="font-semibold mb-2">تحليل التدفق النقدي (آخر 30 يوم)</h3><canvas id="cashflow-donut-chart"></canvas></div>
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 lg:col-span-2"><h3 class="font-semibold mb-2">الدخل مقابل المصروف (آخر 6 أشهر)</h3><canvas id="income-expense-bar-chart"></canvas></div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <h3 class="text-xl font-semibold mb-4">طباعة تقرير مخصص</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div><label for="report-start-date" class="block text-sm">من تاريخ</label><input type="date" id="report-start-date" value="${dayjs().startOf('month').format('YYYY-MM-DD')}" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded"></div>
+                            <div><label for="report-end-date" class="block text-sm">إلى تاريخ</label><input type="date" id="report-end-date" value="${dayjs().endOf('month').format('YYYY-MM-DD')}" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded"></div>
+                            <button id="print-report-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-bold transition flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4v2h10V4H5zm0 10h10v-6H5v6zm12-9h-2V3h- hükümet 2v2H7V3H5v2H3v12h2v2h2v-2h8v2h2v-2h2V5h-2z" /><path d="M15 12H9v-2h6v2z" /></svg>
+                                طباعة تقرير PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            function getSettingsView() {
+                const accountItems = state.settings.accounts.map(acc => `
+                <li class="flex justify-between items-center p-2 border-b dark:border-gray-700">
+                    <span>${acc.name} (${acc.currency.toUpperCase()})</span>
+                    <div class="space-x-2 space-x-reverse">
+                        <button class="edit-account-btn text-blue-500 hover:text-blue-700" data-id="${acc.id}">تعديل</button>
+                        <button class="delete-account-btn text-red-500 hover:text-red-700" data-id="${acc.id}">حذف</button>
+                    </div>
+                </li>
+             `).join('');
+
+                return `
+                <div class="space-y-6">
+                    <h2 class="text-2xl font-bold">الإعدادات</h2>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-semibold text-lg">إدارة الحسابات</h3>
+                            <button id="add-account-btn" class="px-3 py-1 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600">إضافة حساب</button>
+                        </div>
+                        <ul id="accounts-list">${accountItems || '<p>لا توجد حسابات.</p>'}</ul>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <h3 class="font-semibold text-lg mb-4">عام</h3>
+                        <div class="flex items-center justify-between">
+                            <span>الوضع الداكن</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                              <input type="checkbox" id="theme-toggle-checkbox" class="sr-only peer">
+                              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                        <h3 class="font-semibold text-lg mb-4">إدارة البيانات</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <button id="export-data-btn" class="w-full px-4 py-3 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center justify-center space-x-2 space-x-reverse"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg><span>تصدير البيانات</span></button>
+                            <label class="w-full px-4 py-3 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 text-center cursor-pointer flex items-center justify-center space-x-2 space-x-reverse">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                                <span>استيراد البيانات</span>
+                                <input type="file" id="import-data-input" class="hidden" accept=".json">
+                            </label>
+                        </div>
+                    </div>
+                    <div class="bg-red-100 dark:bg-red-900/50 rounded-lg p-6">
+                        <h3 class="font-semibold text-red-800 dark:text-red-300 text-lg mb-2">منطقة الخطر</h3>
+                        <button id="reset-app-btn" class="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 font-bold">إعادة ضبط التطبيق</button>
+                        <p class="text-xs text-red-700 dark:text-red-400 mt-2 text-center">تحذير: سيحذف هذا جميع بياناتك نهائيًا.</p>
+                    </div>
+                </div>`;
+            }
+
+            // === DATA RENDERING & UPDATES ===
+            function renderDashboardData() {
+                updateGlobalSummary();
+                const recentTransactions = [...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+                const container = document.getElementById('dashboard-recent-transactions');
+                if (container) {
+                    if (recentTransactions.length > 0) {
+                        container.innerHTML = recentTransactions.map(tx => createTransactionItemHTML(tx, false)).join('');
+                    } else {
+                        container.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-4">لا توجد عمليات بعد.</p>`;
+                    }
+                }
+            }
+
+            function renderAccountDetailTransactions(accountId) {
+                const listContainer = document.getElementById('transactions-list');
+                if (!listContainer) return;
+
+                const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
+                const categoryFilter = document.getElementById('filter-category')?.value || 'all';
+                const typeFilter = document.getElementById('filter-type')?.value || 'all';
+                const periodFilter = document.getElementById('filter-period')?.value || 'all';
+                const dateSort = document.getElementById('sort-date')?.value || 'desc';
+
+                let filteredTransactions = state.transactions.filter(tx => {
+                    if (tx.accountId !== accountId) return false;
+
+                    let periodMatch = true;
+                    if (periodFilter !== 'all') {
+                        const txDate = dayjs(tx.date);
+                        const now = dayjs();
+                        if (periodFilter === 'week') periodMatch = txDate.isSame(now, 'isoWeek');
+                        if (periodFilter === 'month') periodMatch = txDate.isSame(now, 'month');
+                        if (periodFilter === 'year') periodMatch = txDate.isSame(now, 'year');
+                    }
+
+                    const categoryMatch = categoryFilter === 'all' || tx.category === categoryFilter;
+                    const typeMatch = typeFilter === 'all' || tx.type === typeFilter;
+                    const searchMatch = `${tx.notes.toLowerCase()} ${getCategoryById(tx.category).name.toLowerCase()}`.includes(searchTerm);
+                    return periodMatch && categoryMatch && typeMatch && searchMatch;
+                });
+
+                filteredTransactions.sort((a, b) => {
+                    const dateA = new Date(a.date);
+                    const dateB = new Date(b.date);
+                    return dateSort === 'asc' ? dateA - dateB : dateB - dateA;
+                });
+
+                listContainer.innerHTML = filteredTransactions.length > 0 ?
+                    filteredTransactions.map(tx => createTransactionItemHTML(tx, true)).join('') :
+                    `<p class="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد عمليات لهذا الحساب تطابق الفلاتر.</p>`;
+            }
+
+            function renderTransactionsList(activeCurrency) {
+                const container = document.getElementById('transactions-list');
+                const summaryContainer = document.getElementById('transactions-summary-container');
+                const tabsContainer = document.getElementById('transaction-currency-tabs');
+                if (!container || !tabsContainer) return;
+
+                tabsContainer.innerHTML = getUniqueCurrencies().map(c =>
+                    `<button data-currency="${c}" class="transaction-currency-tab px-4 py-1 text-sm font-medium rounded-md ${c === activeCurrency ? 'bg-blue-500 text-white shadow' : 'text-gray-600 dark:text-gray-300'}">${c}</button>`
+                ).join('');
+
+                const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
+                const categoryFilter = document.getElementById('filter-category')?.value || 'all';
+                const typeFilter = document.getElementById('filter-type')?.value || 'all';
+                const periodFilter = document.getElementById('filter-period')?.value || 'all';
+                const dateSort = document.getElementById('sort-date')?.value || 'desc';
+
+                let filteredTransactions = state.transactions.filter(tx => {
+                    const account = getAccountById(tx.accountId);
+                    if (!account) return false;
+
+                    const currencyMatch = account.currency === activeCurrency;
+                    const categoryMatch = categoryFilter === 'all' || tx.category === categoryFilter;
+                    const typeMatch = typeFilter === 'all' || tx.type === typeFilter;
+                    const searchMatch = `${tx.notes.toLowerCase()} ${getCategoryById(tx.category).name.toLowerCase()}`.includes(searchTerm);
+
+                    let periodMatch = true;
+                    if (periodFilter !== 'all') {
+                        const txDate = dayjs(tx.date);
+                        const now = dayjs();
+                        if (periodFilter === 'week') periodMatch = txDate.isSame(now, 'isoWeek');
+                        if (periodFilter === 'month') periodMatch = txDate.isSame(now, 'month');
+                        if (periodFilter === 'year') periodMatch = txDate.isSame(now, 'year');
+                    }
+
+                    return currencyMatch && categoryMatch && typeMatch && searchMatch && periodMatch;
+                });
+
+                filteredTransactions.sort((a, b) => {
+                    const dateA = new Date(a.date);
+                    const dateB = new Date(b.date);
+                    return dateSort === 'asc' ? dateA - dateB : dateB - dateA;
+                });
+
+                container.innerHTML = filteredTransactions.length > 0 ?
+                    filteredTransactions.map(tx => createTransactionItemHTML(tx, true)).join('') :
+                    `<p class="text-center text-gray-500 dark:text-gray-400 py-8">لم يتم العثور على عمليات مطابقة.</p>`;
+
+                if (periodFilter !== 'all' && filteredTransactions.length > 0) {
+                    const summary = calculatePeriodSummary(filteredTransactions, activeCurrency);
+                    summaryContainer.innerHTML = `
+                    <div class="summary-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">إجمالي الدخل</p>
+                            <p class="text-lg font-bold text-green-600 dark:text-green-400">${formatCurrency(summary.income, summary.currency)}</p>
+                        </div>
+                         <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">إجمالي المصروف</p>
+                            <p class="text-lg font-bold text-red-600 dark:text-red-400">${formatCurrency(summary.expense, summary.currency)}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">الصافي</p>
+                            <p class="text-lg font-bold ${summary.net >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'}">${formatCurrency(summary.net, summary.currency)}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">الأكثر استهلاكاً</p>
+                            <p class="text-lg font-bold">${summary.topExpenseCategory || '-'}</p>
+                        </div>
+                    </div>`;
+                    summaryContainer.classList.remove('hidden');
+                } else {
+                    summaryContainer.classList.add('hidden');
+                    summaryContainer.innerHTML = '';
+                }
+            }
+
+            function renderMonthlySummary() {
+                const container = document.getElementById('monthly-summary-list');
+                if (!container) return;
+
+                const yearFilter = document.getElementById('summary-year-filter').value;
+                const halfFilter = document.getElementById('summary-half-filter').value;
+                const quarterFilter = document.getElementById('summary-quarter-filter').value;
+
+                // Update yearly summary bar
+                updateYearlySummaryBar(yearFilter);
+
+                const txsByMonth = state.transactions.reduce((acc, tx) => {
+                    const monthKey = dayjs(tx.date).format('YYYY-MM');
+                    if (!acc[monthKey]) {
+                        acc[monthKey] = [];
+                    }
+                    acc[monthKey].push(tx);
+                    return acc;
+                }, {});
+
+                let filteredMonths = Object.keys(txsByMonth);
+
+                // Default to current month if no filters are selected
+                const isInitialLoad = (yearFilter === 'all' && halfFilter === 'all' && quarterFilter === 'all');
+                if (isInitialLoad) {
+                    const currentMonthKey = dayjs().format('YYYY-MM');
+                    filteredMonths = filteredMonths.filter(monthKey => monthKey === currentMonthKey);
+                } else {
+                    if (yearFilter !== 'all') {
+                        filteredMonths = filteredMonths.filter(monthKey => monthKey.startsWith(yearFilter));
+                    }
+                    if (quarterFilter !== 'all') {
+                        filteredMonths = filteredMonths.filter(monthKey => dayjs(monthKey).quarter() == quarterFilter);
+                    }
+                    if (halfFilter !== 'all') {
+                        const startMonth = halfFilter === '1' ? 1 : 7;
+                        const endMonth = halfFilter === '1' ? 6 : 12;
+                        filteredMonths = filteredMonths.filter(monthKey => {
+                            const month = dayjs(monthKey).month() + 1;
+                            return month >= startMonth && month <= endMonth;
+                        });
+                    }
+                }
+
+                filteredMonths.sort().reverse();
+
+                if (filteredMonths.length === 0) {
+                    container.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-8">لا توجد بيانات للفترة المحددة.</p>`;
+                    return;
+                }
+
+                const cardsHTML = filteredMonths.map(monthKey => {
+                    const monthTransactions = txsByMonth[monthKey];
+                    const metricsByCurrency = {};
+
+                    getUniqueCurrencies().forEach(currency => {
+                        const currencyTxs = monthTransactions.filter(tx => {
+                            const account = getAccountById(tx.accountId);
+                            return account && account.currency === currency;
+                        });
+                        if (currencyTxs.length > 0) {
+                            metricsByCurrency[currency] = calculateMonthlyMetrics(currencyTxs);
+                        }
+                    });
+
+                    const currencyBlocksHTML = Object.entries(metricsByCurrency).map(([currency, metrics]) => {
+                        const netColor = metrics.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                        return `
+                    <div class="border-t-2 dark:border-gray-600 pt-3 mt-3">
+                        <h4 class="font-bold text-lg text-blue-600 dark:text-blue-400 mb-2">${currency}</h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                            <div class="bg-green-100 dark:bg-green-900/50 p-2 rounded-lg">
+                                <p class="text-green-800 dark:text-green-300">الدخل الفعلي</p>
+                                <p class="font-bold text-green-900 dark:text-green-200">${formatCurrency(metrics.actualIncome, currency)}</p>
+                            </div>
+                            <div class="bg-red-100 dark:bg-red-900/50 p-2 rounded-lg">
+                                <p class="text-red-800 dark:text-red-300">المصروف الفعلي</p>
+                                <p class="font-bold text-red-900 dark:text-red-200">${formatCurrency(metrics.actualExpense, currency)}</p>
+                            </div>
+                             <div class="bg-gray-100 dark:bg-gray-700 p-2 rounded-lg col-span-2 sm:col-span-1">
+                                <p class="text-gray-800 dark:text-gray-300">صافي الشهر</p>
+                                <p class="font-bold text-xl ${netColor}">${formatCurrency(metrics.net, currency)}</p>
+                            </div>
+                            <div class="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-lg">
+                                <p class="text-blue-800 dark:text-blue-300">سلف معطاة</p>
+                                <p class="font-bold text-blue-900 dark:text-blue-200">${formatCurrency(metrics.loansGiven, currency)}</p>
+                            </div>
+                            <div class="bg-yellow-100 dark:bg-yellow-900/50 p-2 rounded-lg">
+                                <p class="text-yellow-800 dark:text-yellow-300">سلف مستلمة</p>
+                                <p class="font-bold text-yellow-900 dark:text-yellow-200">${formatCurrency(metrics.loansReceived, currency)}</p>
+                            </div>
+                            <div class="bg-teal-100 dark:bg-teal-900/60 p-2 rounded-lg">
+                                <p class="text-xs text-teal-800 dark:text-teal-300">إضافة مصارفة</p>
+                                <p class="font-bold text-teal-900 dark:text-teal-200">${formatCurrency(metrics.exchangeIn, currency)}</p>
+                            </div>
+                            <div class="bg-pink-100 dark:bg-pink-900/60 p-2 rounded-lg">
+                                <p class="text-xs text-pink-800 dark:text-pink-300">خصم مصارفة</p>
+                                <p class="font-bold text-pink-900 dark:text-pink-200">${formatCurrency(metrics.exchangeOut, currency)}</p>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                    }).join('');
+
+                    return `
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-3">${dayjs(monthKey).format('MMMM YYYY')}</h3>
+                    ${currencyBlocksHTML}
+                </div>
+                `;
+                }).join('');
+
+                container.innerHTML = cardsHTML;
+            }
+
+            function updateYearlySummaryBar(year) {
+                const bar = document.getElementById('yearly-summary-bar');
+                if (!bar || year === 'all') {
+                    bar?.classList.add('hidden');
+                    return;
+                }
+
+                const yearTransactions = state.transactions.filter(tx => dayjs(tx.date).year() == year);
+                const summaryByCurrency = {};
+
+                yearTransactions.forEach(tx => {
+                    const account = getAccountById(tx.accountId);
+                    if (!account) return;
+                    const currency = account.currency;
+                    if (!summaryByCurrency[currency]) {
+                        summaryByCurrency[currency] = { income: 0, expense: 0, net: 0 };
+                    }
+                    const metrics = calculateMonthlyMetrics([tx]); // Use the same logic
+                    summaryByCurrency[currency].income += metrics.actualIncome;
+                    summaryByCurrency[currency].expense += metrics.actualExpense;
+                });
+
+                let html = `<h3 class="text-lg font-bold text-center mb-2">ملخص سنة ${year}</h3><div class="space-y-2">`;
+
+                Object.entries(summaryByCurrency).forEach(([currency, summary]) => {
+                    summary.net = summary.income - summary.expense;
+                    const netColor = summary.net >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400';
+                    html += `
+                <div class="border-t dark:border-gray-700/50 pt-2">
+                    <h4 class="font-semibold text-blue-800 dark:text-blue-300">${currency}</h4>
+                    <div class="grid grid-cols-3 gap-2 text-center text-sm">
+                        <div><p class="text-gray-500 dark:text-gray-400">الدخل</p><p class="font-bold text-green-600 dark:text-green-400">${formatCurrency(summary.income, currency)}</p></div>
+                        <div><p class="text-gray-500 dark:text-gray-400">الخرج</p><p class="font-bold text-red-600 dark:text-red-400">${formatCurrency(summary.expense, currency)}</p></div>
+                        <div><p class="text-gray-500 dark:text-gray-400">الصافي</p><p class="font-bold ${netColor}">${formatCurrency(summary.net, currency)}</p></div>
+                    </div>
+                </div>`;
+                });
+
+                html += `</div>`;
+                bar.innerHTML = html;
+                bar.classList.remove('hidden');
+            }
+
+
+            function calculatePeriodSummary(transactions, currency) {
+                const summary = { income: 0, expense: 0, net: 0, currency: currency, topExpenseCategory: null };
+                if (transactions.length === 0) return summary;
+
+                const expenseByCategory = {};
+
+                transactions.forEach(tx => {
+                    if (tx.type === 'income') summary.income += tx.amount;
+                    if (tx.type === 'expense') {
+                        summary.expense += tx.amount;
+                        const categoryName = getCategoryById(tx.category).name;
+                        expenseByCategory[categoryName] = (expenseByCategory[categoryName] || 0) + tx.amount;
+                    }
+                });
+
+                summary.net = summary.income - summary.expense;
+
+                if (Object.keys(expenseByCategory).length > 0) {
+                    summary.topExpenseCategory = Object.entries(expenseByCategory).sort(([, a], [, b]) => b - a)[0][0];
+                }
+
+                return summary;
+            }
+
+            function createTransactionItemHTML(tx, isEditable = false) {
+                const category = getCategoryById(tx.category);
+                const account = getAccountById(tx.accountId);
+                const isIncome = tx.type === 'income';
+                const amountColor = isIncome ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
+                const sign = isIncome ? '+' : '-';
+                const buttonsHTML = isEditable ? `
+                <div class="flex space-x-2 space-x-reverse mt-1 justify-end">
+                   <button class="edit-btn text-gray-400 hover:text-blue-500" data-id="${tx.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" /></svg></button>
+                   <button class="delete-btn text-gray-400 hover:text-red-500" data-id="${tx.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                </div>` : '';
+
+                return `
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center space-x-4 space-x-reverse">
+                    <div class="text-3xl">${category.icon}</div>
+                    <div class="flex-grow">
+                        <p class="font-bold">${category.name}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">${tx.notes || 'لا توجد ملاحظات'}</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">${dayjs(tx.date).format('dddd, D MMMM YYYY')} - ${account ? account.name : 'حساب محذوف'}</p>
+                    </div>
+                    <div class="text-left flex-shrink-0">
+                        <p class="font-bold text-lg ${amountColor}">${sign} ${formatCurrency(tx.amount, account?.currency || '')}</p>
+                        ${buttonsHTML}
+                    </div>
+                </div>`;
+            }
+
+            function createDebtItemHTML(d) {
+                const account = getAccountById(d.accountId);
+                const isLent = d.type === 'lent';
+                const isPaid = d.status === 'paid';
+                const amountColor = isLent ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
+
+                let statusHTML = '';
+                if (isPaid) {
+                    statusHTML = `<span class="text-xs font-bold text-white bg-gray-500 px-2 py-1 rounded-full">مسدد بالكامل</span>`;
+                } else {
+                    const remainingText = d.amount < (d.originalAmount || d.amount) ? `المتبقي: ${formatCurrency(d.amount, account?.currency || '')}` : `${formatCurrency(d.amount, account?.currency || '')}`;
+                    statusHTML = `<p class="text-lg font-bold ${amountColor}">${remainingText}</p>`;
+                }
+
+                const buttonsHTML = !isPaid ? `
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <button class="mark-paid-btn text-xs px-3 py-1 rounded-full ${isLent ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 hover:bg-green-200' : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200 hover:bg-red-200'}" data-id="${d.id}">${isLent ? 'تحصيل' : 'سداد'}</button>
+                    <button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                </div>
+            ` : `<button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
+
+                return `
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex items-start justify-between ${isPaid ? 'opacity-60' : ''}">
+                    <div>
+                        <p class="font-bold text-lg">${d.person}</p>
+                        ${statusHTML}
+                        ${!isPaid && d.amount < (d.originalAmount || d.amount) ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">المبلغ الأصلي: ${formatCurrency(d.originalAmount, account?.currency || '')}</p>` : ''}
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${dayjs(d.date).format('D MMMM YYYY')}</p>
+                    </div>
+                    <div class="flex flex-col items-end space-y-2">
+                        ${buttonsHTML}
+                    </div>
+                </div>
+            `;
+            }
+
+            function renderDebtsList(activeCurrency) {
+                const currencyTabsEl = document.getElementById('debt-currency-tabs');
+                const summaryCardsEl = document.getElementById('debt-summary-cards');
+                const listsContainerEl = document.getElementById('debt-lists-container');
+                const searchInput = document.getElementById('debt-search-input');
+                if (!currencyTabsEl || !listsContainerEl) return;
+
+                const searchTerm = (searchInput?.value || '').trim().toLowerCase();
+
+                currencyTabsEl.innerHTML = getUniqueCurrencies().map(c => `<button data-currency="${c}" class="debt-currency-tab px-4 py-1 text-sm font-medium rounded-md ${c === activeCurrency ? 'bg-blue-500 text-white shadow' : 'text-gray-600 dark:text-gray-300'}">${c}</button>`).join('');
+
+                const relevantDebts = state.debts.filter(d => {
+                    const account = getAccountById(d.accountId);
+                    return account && account.currency === activeCurrency;
+                });
+
+                if (searchTerm) {
+                    summaryCardsEl.innerHTML = '';
+                    const matchedDebts = relevantDebts
+                        .filter(d => d.person.toLowerCase().includes(searchTerm))
+                        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    if (matchedDebts.length > 0) {
+                        const personName = matchedDebts[0].person;
+                        listsContainerEl.innerHTML = `
+                        <h3 class="text-xl font-semibold mt-4 mb-3">سجل الديون لـ: <span class="text-blue-600 dark:text-blue-400">${personName}</span></h3>
+                        <div class="space-y-3">${matchedDebts.map(d => createDebtItemHTML(d)).join('')}</div>`;
+                    } else {
+                        listsContainerEl.innerHTML = '<p class="text-center text-gray-500 py-8">لم يتم العثور على ديون مطابقة للبحث.</p>';
+                    }
+
+                } else {
+                    const unpaidDebts = relevantDebts.filter(d => d.status === 'unpaid');
+                    const lentDebts = unpaidDebts.filter(d => d.type === 'lent');
+                    const borrowedDebts = unpaidDebts.filter(d => d.type === 'borrowed');
+
+                    summaryCardsEl.innerHTML = `
+                    <div class="bg-green-100 dark:bg-green-900/50 p-4 rounded-lg"><p class="font-semibold text-green-800 dark:text-green-300">إجمالي الديون لك</p><p class="text-2xl font-bold text-green-900 dark:text-green-200">${formatCurrency(lentDebts.reduce((s, d) => s + d.amount, 0), activeCurrency)}</p></div>
+                    <div class="bg-red-100 dark:bg-red-900/50 p-4 rounded-lg"><p class="font-semibold text-red-800 dark:text-red-300">إجمالي الديون عليك</p><p class="text-2xl font-bold text-red-900 dark:text-red-200">${formatCurrency(borrowedDebts.reduce((s, d) => s + d.amount, 0), activeCurrency)}</p></div>`;
+
+                    const createListHTML = (list) => list.length === 0 ? `<p class="text-center text-gray-500 dark:text-gray-400 py-4">لا توجد ديون هنا.</p>` : list.map(d => createDebtItemHTML(d)).join('');
+
+                    listsContainerEl.innerHTML = `
+                    <div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-green-500 pb-1">ديون لك (لم يتم تحصيلها)</h3><div class="space-y-3">${createListHTML(lentDebts)}</div></div>
+                    <div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-red-500 pb-1">ديون عليك (لم يتم سدادها)</h3><div class="space-y-3">${createListHTML(borrowedDebts)}</div></div>`;
+                }
+            }
+
+            function updateGlobalSummary() {
+                if (currentView !== 'dashboard') return;
+                const allTimeTotals = calculateTotals();
+                const thisMonthTxs = state.transactions.filter(tx => dayjs(tx.date).isSame(dayjs(), 'month'));
+
+                getUniqueCurrencies().forEach(currency => {
+                    const balanceEl = document.getElementById(`dashboard-balance-${currency}`);
+                    if (balanceEl) balanceEl.textContent = formatCurrency(allTimeTotals.currencies[currency]?.balance || 0, currency);
+
+                    const currencyMonthTxs = thisMonthTxs.filter(tx => {
+                        const account = getAccountById(tx.accountId);
+                        return account && account.currency === currency;
+                    });
+                    const metrics = calculateMonthlyMetrics(currencyMonthTxs);
+
+                    document.getElementById(`dashboard-income-${currency}`).textContent = formatCurrency(metrics.actualIncome, currency);
+                    document.getElementById(`dashboard-expense-${currency}`).textContent = formatCurrency(metrics.actualExpense, currency);
+                    document.getElementById(`dashboard-given-loans-${currency}`).textContent = formatCurrency(metrics.loansGiven, currency);
+                    document.getElementById(`dashboard-received-loans-${currency}`).textContent = formatCurrency(metrics.loansReceived, currency);
+                    document.getElementById(`dashboard-exchange-in-${currency}`).textContent = formatCurrency(metrics.exchangeIn, currency);
+                    document.getElementById(`dashboard-exchange-out-${currency}`).textContent = formatCurrency(metrics.exchangeOut, currency);
+
+                    const netMonthEl = document.getElementById(`dashboard-net-month-${currency}`);
+                    const netMonthContainer = document.getElementById(`dashboard-net-month-container-${currency}`);
+                    netMonthEl.textContent = formatCurrency(metrics.net, currency);
+                    netMonthContainer.className = 'p-3 rounded-lg text-center ';
+                    if (metrics.net >= 0) {
+                        netMonthContainer.classList.add('bg-green-200', 'dark:bg-green-900/70');
+                        netMonthEl.classList.add('text-green-800', 'dark:text-green-200');
+                    } else {
+                        netMonthContainer.classList.add('bg-red-200', 'dark:bg-red-900/70');
+                        netMonthEl.classList.add('text-red-800', 'dark:text-red-200');
+                    }
+
+                    const unpaidDebts = state.debts.filter(d => {
+                        const account = getAccountById(d.accountId);
+                        return d.status === 'unpaid' && account && account.currency === currency;
+                    });
+                    const totalLent = unpaidDebts.filter(d => d.type === 'lent').reduce((s, d) => s + d.amount, 0);
+                    const totalBorrowed = unpaidDebts.filter(d => d.type === 'borrowed').reduce((s, d) => s + d.amount, 0);
+
+                    document.getElementById(`dashboard-lent-${currency.toLowerCase()}`).textContent = formatCurrency(totalLent, currency);
+                    document.getElementById(`dashboard-borrowed-${currency.toLowerCase()}`).textContent = formatCurrency(totalBorrowed, currency);
+                });
+            }
+            function renderReportsCharts(currency) {
+                if (currentView !== 'reports') return;
+                destroyCharts();
+                document.getElementById('charts-container').innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4"><h3 class="font-semibold mb-2">المصروفات حسب الفئة (آخر 30 يوم)</h3><canvas id="expense-pie-chart"></canvas></div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4"><h3 class="font-semibold mb-2">تحليل التدفق النقدي (آخر 30 يوم)</h3><canvas id="cashflow-donut-chart"></canvas></div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 lg:col-span-2"><h3 class="font-semibold mb-2">الدخل مقابل المصروف (آخر 6 أشهر)</h3><canvas id="income-expense-bar-chart"></canvas></div>`;
+                renderPieChart(currency);
+                renderCashflowDonutChart(currency);
+                renderBarChart(currency);
+                document.querySelectorAll('.report-currency-tab').forEach(tab => {
+                    const is_active = tab.dataset.currency === currency;
+                    tab.classList.toggle('bg-blue-500', is_active);
+                    tab.classList.toggle('text-white', is_active);
+                    tab.classList.toggle('shadow', is_active);
+                    tab.classList.toggle('text-gray-700', !is_active);
+                    tab.classList.toggle('dark:text-gray-300', !is_active);
+                });
+            }
+            function destroyCharts() { Object.values(charts).forEach(chart => chart.destroy()); charts = {}; }
+            function renderPieChart(currency) {
+                const ctx = document.getElementById('expense-pie-chart')?.getContext('2d'); if (!ctx) return;
+                const expenses = state.transactions.filter(tx => {
+                    const account = getAccountById(tx.accountId);
+                    return tx.type === 'expense' && !['debt-given', 'exchange-out', 'internal-transfer-out'].includes(tx.category) && account && account.currency === currency && dayjs(tx.date).isAfter(dayjs().subtract(30, 'day'));
+                });
+                const dataByCategory = expenses.reduce((acc, tx) => { const name = getCategoryById(tx.category).name; acc[name] = (acc[name] || 0) + tx.amount; return acc; }, {});
+                if (Object.keys(dataByCategory).length === 0) { ctx.canvas.parentElement.innerHTML += '<p class="text-center text-gray-500 py-8">لا توجد بيانات مصروفات لعرضها.</p>'; return; }
+                charts.pie = new Chart(ctx, { type: 'pie', data: { labels: Object.keys(dataByCategory), datasets: [{ data: Object.values(dataByCategory), backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6'], borderColor: state.settings.theme === 'dark' ? '#1f2937' : '#fff' }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: state.settings.theme === 'dark' ? '#e5e7eb' : '#374151', font: { family: 'Cairo' } } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${formatCurrency(c.raw, currency)}` } } } } });
+            }
+            function renderCashflowDonutChart(currency) {
+                const ctx = document.getElementById('cashflow-donut-chart')?.getContext('2d'); if (!ctx) return;
+                const last30DaysTxs = state.transactions.filter(tx => {
+                    const account = getAccountById(tx.accountId);
+                    return account && account.currency === currency && dayjs(tx.date).isAfter(dayjs().subtract(30, 'day'));
+                });
+
+                const metrics = calculateMonthlyMetrics(last30DaysTxs);
+                const data = [metrics.actualIncome, metrics.actualExpense, metrics.loansGiven, metrics.loansReceived, metrics.exchangeIn, metrics.exchangeOut];
+                const labels = ['الدخل الفعلي', 'المصروف الفعلي', 'سلف معطاة', 'سلف مستلمة', 'إضافة مصارفة', 'خصم مصارفة'];
+                const colors = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#14b8a6', '#ec4899'];
+
+                const filteredData = { labels: [], data: [], colors: [] };
+                data.forEach((value, index) => {
+                    if (value > 0) {
+                        filteredData.labels.push(labels[index]);
+                        filteredData.data.push(value);
+                        filteredData.colors.push(colors[index]);
+                    }
+                });
+
+                if (filteredData.data.length === 0) {
+                    ctx.canvas.parentElement.innerHTML += '<p class="text-center text-gray-500 py-8">لا يوجد تدفق نقدي لعرضه.</p>';
+                    return;
+                }
+
+                charts.donut = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: filteredData.labels,
+                        datasets: [{
+                            data: filteredData.data,
+                            backgroundColor: filteredData.colors,
+                            borderColor: state.settings.theme === 'dark' ? '#1f2937' : '#fff'
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: state.settings.theme === 'dark' ? '#e5e7eb' : '#374151', font: { family: 'Cairo' } } }, tooltip: { callbacks: { label: c => ` ${c.label}: ${formatCurrency(c.raw, currency)}` } } } }
+                });
+            }
+            function renderBarChart(currency) {
+                const ctx = document.getElementById('income-expense-bar-chart')?.getContext('2d'); if (!ctx) return;
+                const labels = [], incomeData = [], expenseData = [];
+                for (let i = 5; i >= 0; i--) {
+                    const month = dayjs().subtract(i, 'month');
+                    labels.push(month.format('MMM YYYY'));
+                    const monthTxs = state.transactions.filter(tx => {
+                        const account = getAccountById(tx.accountId);
+                        return account && account.currency === currency && dayjs(tx.date).isSame(month, 'month')
+                    });
+                    const metrics = calculateMonthlyMetrics(monthTxs);
+                    incomeData.push(metrics.actualIncome);
+                    expenseData.push(metrics.actualExpense);
+                }
+                if (incomeData.every(v => v === 0) && expenseData.every(v => v === 0)) { ctx.canvas.parentElement.innerHTML += '<p class="text-center text-gray-500 py-8">لا توجد بيانات لعرضها.</p>'; return; }
+                const chartColor = state.settings.theme === 'dark' ? '#9ca3af' : '#6b7280';
+                charts.bar = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'الدخل الفعلي', data: incomeData, backgroundColor: '#22c55e' }, { label: 'المصروفات الفعلية', data: expenseData, backgroundColor: '#ef4444' }] }, options: { responsive: true, scales: { y: { ticks: { color: chartColor, callback: v => formatCurrency(v, currency).replace(/\s\D+$/, '') }, grid: { color: state.settings.theme === 'dark' ? '#374151' : '#e5e7eb' } }, x: { ticks: { color: chartColor }, grid: { color: 'transparent' } } }, plugins: { legend: { labels: { color: chartColor, font: { family: 'Cairo' } } }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${formatCurrency(c.raw, currency)}` } } } } });
+            }
+            function calculateTotals() {
+                const totals = { accounts: {}, currencies: {} };
+
+                state.settings.accounts.forEach(acc => {
+                    totals.accounts[acc.id] = { balance: 0 };
+                });
+                getUniqueCurrencies().forEach(curr => {
+                    totals.currencies[curr] = { balance: 0, income: 0, expense: 0 };
+                });
+
+                state.transactions.forEach(tx => {
+                    const account = getAccountById(tx.accountId);
+                    if (!account) return;
+
+                    const amount = tx.type === 'income' ? tx.amount : -tx.amount;
+                    if (!totals.accounts[tx.accountId]) totals.accounts[tx.accountId] = { balance: 0 };
+                    totals.accounts[tx.accountId].balance += amount;
+
+                    if (!totals.currencies[account.currency]) totals.currencies[account.currency] = { balance: 0, income: 0, expense: 0 };
+                    totals.currencies[account.currency].balance += amount;
+
+                    if (tx.type === 'income') totals.currencies[account.currency].income += tx.amount;
+                    else totals.currencies[account.currency].expense += tx.amount;
+                });
+
+                return totals;
+            }
+
+            function calculateSpentForCategory(categoryId, date, currency) {
+                const start = dayjs(date).startOf('month');
+                const end = dayjs(date).endOf('month');
+                return state.transactions.filter(tx => {
+                    const account = getAccountById(tx.accountId);
+                    return tx.category === categoryId &&
+                        tx.type === 'expense' &&
+                        account &&
+                        account.currency === currency &&
+                        dayjs(tx.date).isBetween(start, end, null, '[]', '[)');
+                }).reduce((s, tx) => s + tx.amount, 0);
+            }
+
+
+            // === EVENT LISTENERS & HANDLERS ===
+            function attachNavListeners() {
+                document.querySelectorAll('.nav-item').forEach(btn => {
+                    btn.addEventListener('click', () => renderView(btn.dataset.view));
+                });
+                mobileMenuBtn.addEventListener('click', openMobileDrawer);
+                mobileDrawerOverlay.addEventListener('click', closeMobileDrawer);
+            }
+
+            function attachEventListeners() {
+                attachNavListeners();
+                addItemBtn.addEventListener('click', handleAddItem);
+                document.querySelectorAll('.cancel-modal-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        hideTransactionModal();
+                        hideDebtModal();
+                        hideAccountModal();
+                    });
+                });
+                document.getElementById('transaction-form')?.addEventListener('submit', handleTransactionFormSubmit);
+                document.getElementById('debt-form')?.addEventListener('submit', handleDebtFormSubmit);
+                document.getElementById('account-form')?.addEventListener('submit', handleAccountFormSubmit);
+            }
+
+            function attachAccountsListeners(accountId = null) {
+                if (accountId) {
+                    // Detail view listeners
+                    document.getElementById('back-to-accounts-btn')?.addEventListener('click', () => renderView('accounts'));
+
+                    const refilterDetail = () => renderAccountDetailTransactions(accountId);
+                    document.getElementById('search-input')?.addEventListener('input', refilterDetail);
+                    document.getElementById('filter-period')?.addEventListener('change', refilterDetail);
+                    document.getElementById('filter-category')?.addEventListener('change', refilterDetail);
+                    document.getElementById('filter-type')?.addEventListener('change', refilterDetail);
+                    document.getElementById('sort-date')?.addEventListener('change', refilterDetail);
+
+                    // Attach listeners for edit/delete buttons on transactions
+                    document.getElementById('transactions-list')?.addEventListener('click', e => {
+                        const editBtn = e.target.closest('.edit-btn');
+                        const deleteBtn = e.target.closest('.delete-btn');
+                        if (editBtn) showTransactionModal(editBtn.dataset.id);
+                        if (deleteBtn) handleDeleteTransaction(deleteBtn.dataset.id);
+                    });
+
+                    renderAccountDetailTransactions(accountId);
+                } else {
+                    // Main view listeners
+                    document.querySelectorAll('.account-card-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            renderView('accounts', { accountId: btn.dataset.accountId });
+                        });
+                    });
+                    document.getElementById('execute-internal-transfer-btn')?.addEventListener('click', handleInternalTransfer);
+                    document.getElementById('execute-exchange-btn')?.addEventListener('click', handleExecuteExchange);
+
+                    const exchangeFromAccount = document.getElementById('exchange-from-account');
+                    const exchangeToAccount = document.getElementById('exchange-to-account');
+                    const updateExchangePreview = () => {
+                        const fromAccount = getAccountById(exchangeFromAccount?.value);
+                        const toAccount = getAccountById(exchangeToAccount?.value);
+                        if (!fromAccount || !toAccount) return;
+
+                        const amount = parseFloat(document.getElementById('exchange-from-amount')?.value) || 0;
+                        const rate = parseFloat(document.getElementById('exchange-rate')?.value) || 0;
+                        const toAmount = amount * rate;
+                        document.getElementById('exchange-result').textContent = formatCurrency(toAmount, toAccount.currency);
+                        document.getElementById('exchange-rate-helper').textContent = `1 ${fromAccount.currency} = ? ${toAccount.currency}`;
+                    };
+                    ['exchange-from-amount', 'exchange-rate', 'exchange-from-account', 'exchange-to-account'].forEach(id => {
+                        document.getElementById(id)?.addEventListener('input', updateExchangePreview);
+                    });
+                    updateExchangePreview();
+                }
+            }
+            function handleInternalTransfer() {
+                const fromId = document.getElementById('internal-transfer-from').value;
+                const toId = document.getElementById('internal-transfer-to').value;
+                const amount = parseFloat(document.getElementById('internal-transfer-amount').value);
+                const fromAccount = getAccountById(fromId);
+                const toAccount = getAccountById(toId);
+
+                if (!fromId || !toId || !amount || amount <= 0) return Swal.fire('خطأ', 'الرجاء تعبئة جميع الحقول بمبلغ صحيح.', 'error');
+                if (fromId === toId) return Swal.fire('خطأ', 'لا يمكن التحويل إلى نفس الحساب.', 'error');
+                if (fromAccount.currency !== toAccount.currency) return Swal.fire('خطأ', 'التحويل الداخلي يتم فقط بين حسابات بنفس العملة. استخدم المصارفة لتحويل العملات.', 'error');
+
+                const balance = calculateTotals().accounts[fromId]?.balance || 0;
+                if (balance < amount) return Swal.fire('رصيد غير كافٍ', `الرصيد في حساب المصدر (${fromAccount.name}) غير كافٍ.`, 'warning');
+
+                Swal.fire({
+                    title: 'تأكيد التحويل الداخلي',
+                    html: `هل أنت متأكد من تحويل <b>${formatCurrency(amount, fromAccount.currency)}</b> من <b>${fromAccount.name}</b> إلى <b>${toAccount.name}</b>؟`,
+                    icon: 'question', showCancelButton: true, confirmButtonText: 'نعم، قم بالتحويل', cancelButtonText: 'إلغاء'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        const date = dayjs().format('YYYY-MM-DD');
+                        state.transactions.push({ id: generateId(), type: 'expense', accountId: fromId, amount, category: 'internal-transfer-out', date, notes: `تحويل إلى ${toAccount.name}` });
+                        state.transactions.push({ id: generateId(), type: 'income', accountId: toId, amount, category: 'internal-transfer-in', date, notes: `استلام من ${fromAccount.name}` });
+                        updateAndRerender();
+                        Swal.fire('تم بنجاح!', 'تم التحويل الداخلي بنجاح.', 'success');
+                    }
+                });
+            }
+
+            function handleExecuteExchange() {
+                const fromAccountId = document.getElementById('exchange-from-account').value;
+                const toAccountId = document.getElementById('exchange-to-account').value;
+                const fromAccount = getAccountById(fromAccountId);
+                const toAccount = getAccountById(toAccountId);
+                const fromAmount = parseFloat(document.getElementById('exchange-from-amount').value);
+                const rate = parseFloat(document.getElementById('exchange-rate').value);
+
+                if (!fromAccount || !toAccount || !fromAmount || !rate || fromAmount <= 0 || rate <= 0) return Swal.fire({ title: 'خطأ', text: 'الرجاء إدخال مبلغ وسعر صرف صحيحين وموجبين.', icon: 'error', confirmButtonText: 'حسناً' });
+                if (fromAccount.currency === toAccount.currency) return Swal.fire({ title: 'خطأ', text: 'لا يمكن المصارفة لنفس العملة. استخدم التحويل الداخلي.', icon: 'error', confirmButtonText: 'حسناً' });
+
+                const totals = calculateTotals();
+                if (totals.accounts[fromAccountId].balance < fromAmount) return Swal.fire({ title: 'رصيد غير كافٍ', text: 'الرصيد في حساب المصدر غير كافٍ لإتمام هذه العملية.', icon: 'warning', confirmButtonText: 'حسناً' });
+
+                Swal.fire({
+                    title: 'تأكيد عملية المصارفة',
+                    html: `هل أنت متأكد من تحويل <b>${formatCurrency(fromAmount, fromAccount.currency)}</b> إلى <b>${formatCurrency(fromAmount * rate, toAccount.currency)}</b>؟`,
+                    icon: 'question', showCancelButton: true, confirmButtonText: 'نعم، قم بالتحويل', cancelButtonText: 'إلغاء'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const toAmount = fromAmount * rate;
+                        const date = dayjs().format('YYYY-MM-DD');
+                        state.transactions.push({ id: generateId(), type: 'expense', accountId: fromAccountId, amount: fromAmount, category: 'exchange-out', date, notes: `تحويل إلى ${toAccount.name}` });
+                        state.transactions.push({ id: generateId(), type: 'income', accountId: toAccountId, amount: toAmount, category: 'exchange-in', date, notes: `استلام من ${fromAccount.name}` });
+                        updateAndRerender();
+                        Swal.fire({ title: 'تم بنجاح', text: 'تمت عملية المصارفة بنجاح.', icon: 'success', confirmButtonText: 'ممتاز' });
+                    }
+                });
+            }
+
+            function attachTransactionsListeners() {
+                document.getElementById('transactions-list')?.addEventListener('click', e => {
+                    const editBtn = e.target.closest('.edit-btn');
+                    const deleteBtn = e.target.closest('.delete-btn');
+                    if (editBtn) showTransactionModal(editBtn.dataset.id);
+                    if (deleteBtn) handleDeleteTransaction(deleteBtn.dataset.id);
+                });
+
+                document.getElementById('transaction-currency-tabs')?.addEventListener('click', e => {
+                    const tab = e.target.closest('.transaction-currency-tab');
+                    if (tab) {
+                        renderTransactionsList(tab.dataset.currency);
+                    }
+                });
+
+                const refilterAndRender = () => {
+                    const activeCurrency = document.querySelector('#transaction-currency-tabs .bg-blue-500')?.dataset.currency || getUniqueCurrencies()[0];
+                    renderTransactionsList(activeCurrency);
+                };
+
+                document.getElementById('search-input')?.addEventListener('input', refilterAndRender);
+                document.getElementById('filter-category')?.addEventListener('change', refilterAndRender);
+                document.getElementById('filter-type')?.addEventListener('change', refilterAndRender);
+                document.getElementById('filter-period')?.addEventListener('change', refilterAndRender);
+                document.getElementById('sort-date')?.addEventListener('change', refilterAndRender);
+            }
+
+            function attachMonthlySummaryListeners() {
+                const filters = ['#summary-year-filter', '#summary-half-filter', '#summary-quarter-filter'];
+                filters.forEach(selector => {
+                    document.querySelector(selector)?.addEventListener('change', renderMonthlySummary);
+                });
+            }
+
+
+            function attachDebtsListeners() {
+                const searchInput = document.getElementById('debt-search-input');
+                const activeCurrency = document.querySelector('.debt-currency-tab.bg-blue-500')?.dataset.currency || getUniqueCurrencies()[0];
+
+                searchInput?.addEventListener('input', () => {
+                    renderDebtsList(activeCurrency);
+                });
+
+                mainContent.addEventListener('click', e => {
+                    const currencyTab = e.target.closest('.debt-currency-tab');
+                    const markPaidBtn = e.target.closest('.mark-paid-btn');
+                    const deleteDebtBtn = e.target.closest('.delete-debt-btn');
+
+                    if (currencyTab) renderDebtsList(currencyTab.dataset.currency);
+                    if (markPaidBtn) handleMarkDebtAsPaid(markPaidBtn.dataset.id);
+                    if (deleteDebtBtn) handleDeleteDebt(deleteDebtBtn.dataset.id);
+                });
+            }
+
+            function attachBudgetsListeners() {
+                const container = document.getElementById('budgets-container');
+                if (!container) return;
+
+                container.addEventListener('click', e => {
+                    const saveBtn = e.target.closest('#save-budgets-btn');
+                    const currencyTab = e.target.closest('.budget-currency-tab');
+
+                    if (saveBtn) {
+                        const currency = saveBtn.dataset.currency;
+                        if (!state.budgets[currency]) state.budgets[currency] = {};
+                        document.querySelectorAll('.budget-input').forEach(input => {
+                            const amount = parseFloat(input.value) || 0;
+                            if (amount > 0) state.budgets[currency][input.dataset.catId] = amount;
+                            else delete state.budgets[currency][input.dataset.catId];
+                        });
+                        updateAndRerender();
+                        Swal.fire('تم الحفظ', `تم تحديث ميزانيات ${currency} بنجاح.`, 'success');
+                    }
+                    if (currencyTab) {
+                        const month = document.getElementById('budget-month-filter').value;
+                        renderViewWithBudgets(currencyTab.dataset.currency, month);
+                    }
+                });
+
+                container.addEventListener('change', e => {
+                    const monthFilter = e.target.closest('#budget-month-filter');
+                    if (monthFilter) {
+                        const currency = document.querySelector('.budget-currency-tab.bg-blue-500')?.dataset.currency || getUniqueCurrencies()[0];
+                        renderViewWithBudgets(currency, monthFilter.value);
+                    }
+                });
+            }
+
+            function renderViewWithBudgets(currency, month) {
+                mainContent.innerHTML = `<div class="view">${getBudgetsView(currency, month)}</div>`;
+                attachBudgetsListeners();
+            }
+
+            function attachReportsListeners() {
+                document.getElementById('print-report-btn')?.addEventListener('click', handlePrintReport);
+                document.querySelectorAll('.report-currency-tab').forEach(tab => tab.addEventListener('click', (e) => renderReportsCharts(e.target.dataset.currency)));
+            }
+
+            function attachSettingsListeners() {
+                const toggle = document.getElementById('theme-toggle-checkbox');
+                if (toggle) {
+                    toggle.checked = document.documentElement.classList.contains('dark');
+                    toggle.addEventListener('change', (e) => {
+                        setTheme(e.target.checked ? 'dark' : 'light');
+                    });
+                }
+                document.getElementById('export-data-btn')?.addEventListener('click', exportData);
+                document.getElementById('import-data-input')?.addEventListener('change', importData);
+                document.getElementById('reset-app-btn')?.addEventListener('click', resetApp);
+                document.getElementById('add-account-btn')?.addEventListener('click', () => showAccountModal());
+                document.getElementById('accounts-list')?.addEventListener('click', e => {
+                    const editBtn = e.target.closest('.edit-account-btn');
+                    const deleteBtn = e.target.closest('.delete-account-btn');
+                    if (editBtn) showAccountModal(editBtn.dataset.id);
+                    if (deleteBtn) handleDeleteAccount(deleteBtn.dataset.id);
+                });
+            }
+
+            function handleAddItem() {
+                if (currentView === 'transactions') showTransactionModal();
+                else if (currentView === 'debts') showDebtModal();
+            }
+
+            function handleTransactionFormSubmit(e) {
+                e.preventDefault();
+                const id = document.getElementById('transaction-id').value;
+                const accountId = document.getElementById('transaction-account').value;
+                const account = getAccountById(accountId);
+                const amount = parseFloat(document.getElementById('transaction-amount').value);
+                const type = document.getElementById('transaction-type').value;
+
+                if (type === 'expense') {
+                    const currentBalance = calculateTotals().accounts[accountId].balance;
+                    if (currentBalance < amount) {
+                        return Swal.fire('رصيد غير كافٍ!', `رصيدك في حساب (${account.name}) لا يكفي لإجراء هذه العملية.`, 'error');
+                    }
+                    const budget = state.budgets[account.currency]?.[document.getElementById('transaction-category').value] || 0;
+                    if (budget > 0) {
+                        const spent = calculateSpentForCategory(document.getElementById('transaction-category').value, document.getElementById('transaction-date').value, account.currency);
+                        const oldAmount = id ? (state.transactions.find(t => t.id === id)?.amount || 0) : 0;
+                        if ((spent - oldAmount + amount) > budget) {
+                            Swal.fire({ title: 'تجاوز الميزانية!', text: `بإضافة هذه العملية، ستتجاوز الميزانية المحددة لهذه الفئة.`, icon: 'warning', confirmButtonText: 'حسناً' });
+                        }
+                    }
+                }
+
+                const newTx = {
+                    type,
+                    accountId,
+                    amount,
+                    category: document.getElementById('transaction-category').value,
+                    date: document.getElementById('transaction-date').value,
+                    notes: document.getElementById('transaction-notes').value.trim()
+                };
+
+                if (id) {
+                    const oldTx = state.transactions.find(t => t.id === id);
+                    newTx.id = id;
+                    Object.assign(oldTx, newTx);
+                }
+                else {
+                    newTx.id = generateId();
+                    state.transactions.push(newTx);
+                }
+                hideTransactionModal();
+                updateAndRerender();
+            }
+
+            function handleDebtFormSubmit(e) {
+                e.preventDefault();
+                const id = document.getElementById('debt-id').value;
+                const accountId = document.getElementById('debt-account').value;
+                const account = getAccountById(accountId);
+                const amount = parseFloat(document.getElementById('debt-amount').value);
+                const type = document.getElementById('debt-type').value;
+                const person = document.getElementById('debt-person').value.trim();
+                const date = document.getElementById('debt-date').value;
+                const notes = document.getElementById('debt-notes').value.trim();
+
+                if (id) {
+                    const index = state.debts.findIndex(d => d.id === id);
+                    if (index > -1) {
+                        state.debts[index].person = person;
+                        state.debts[index].notes = notes;
+                    }
+                } else {
+                    if (type === 'lent') {
+                        const currentBalance = calculateTotals().accounts[accountId]?.balance || 0;
+                        if (currentBalance < amount) {
+                            return Swal.fire({
+                                icon: 'error',
+                                title: 'رصيد غير كافٍ',
+                                text: `رصيدك في حساب (${account.name}) لا يسمح بإقراض هذا المبلغ.`,
+                                confirmButtonText: 'حسناً'
+                            });
+                        }
+                    }
+
+                    const newDebt = {
+                        id: generateId(), type, accountId, amount, originalAmount: amount, person, date, notes, status: 'unpaid'
+                    };
+                    state.debts.push(newDebt);
+
+                    if (newDebt.type === 'lent') {
+                        state.transactions.push({
+                            id: generateId(), type: 'expense', accountId: newDebt.accountId, amount: newDebt.amount,
+                            category: 'debt-given', date: newDebt.date, notes: `إعطاء سلفة إلى ${newDebt.person}`
+                        });
+                    } else if (newDebt.type === 'borrowed') {
+                        state.transactions.push({
+                            id: generateId(), type: 'income', accountId: newDebt.accountId, amount: newDebt.amount,
+                            category: 'debt-received', date: newDebt.date, notes: `استلام سلفة من ${newDebt.person}`
+                        });
+                    }
+                }
+
+                hideDebtModal();
+                updateAndRerender();
+            }
+
+            function handleAccountFormSubmit(e) {
+                e.preventDefault();
+                const id = document.getElementById('account-id').value;
+                const name = document.getElementById('account-name').value.trim();
+                const currency = document.getElementById('account-currency').value.trim().toUpperCase();
+
+                if (!name || !currency) return Swal.fire('خطأ', 'الرجاء تعبئة جميع الحقول.', 'error');
+
+                if (id) {
+                    const account = getAccountById(id);
+                    if (account) {
+                        account.name = name;
+                        account.currency = currency;
+                    }
+                } else {
+                    state.settings.accounts.push({ id: generateId(), name, currency });
+                }
+                hideAccountModal();
+                updateAndRerender('settings');
+            }
+
+            function handleDeleteTransaction(id) { Swal.fire({ title: 'هل أنت متأكد؟', text: 'سيتم حذف هذه العملية نهائياً.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذفها!', cancelButtonText: 'إلغاء' }).then(r => { if (r.isConfirmed) { state.transactions = state.transactions.filter(t => t.id !== id); updateAndRerender(); } }); }
+
+            function handleDeleteDebt(id) {
+                const debt = state.debts.find(d => d.id === id);
+                if (!debt) return;
+                Swal.fire({
+                    title: 'هل أنت متأكد؟',
+                    html: `سيتم حذف الدين الخاص بـ <b>${debt.person}</b> نهائياً.<br><small>ملاحظة: العمليات المالية المرتبطة بالدين (مثل إعطاء السلفة أو سدادها) لن يتم حذفها من سجل العمليات.</small>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'نعم، احذفه!',
+                    cancelButtonText: 'إلغاء'
+                }).then(r => {
+                    if (r.isConfirmed) {
+                        state.debts = state.debts.filter(d => d.id !== id);
+                        updateAndRerender();
+                    }
+                });
+            }
+
+            function handleDeleteAccount(id) {
+                if (state.settings.accounts.length <= 1) {
+                    return Swal.fire('غير مسموح', 'يجب أن يكون لديك حساب واحد على الأقل.', 'error');
+                }
+                const transactionsExist = state.transactions.some(tx => tx.accountId === id);
+                if (transactionsExist) {
+                    return Swal.fire('غير مسموح', 'لا يمكن حذف الحساب لارتباطه بعمليات سابقة. يمكنك تعديل اسمه بدلاً من ذلك.', 'error');
+                }
+                const account = getAccountById(id);
+                Swal.fire({
+                    title: 'هل أنت متأكد؟',
+                    text: `سيتم حذف حساب "${account.name}" نهائياً!`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'نعم، احذفه!',
+                    cancelButtonText: 'إلغاء'
+                }).then(r => {
+                    if (r.isConfirmed) {
+                        state.settings.accounts = state.settings.accounts.filter(acc => acc.id !== id);
+                        updateAndRerender('settings');
+                    }
+                });
+            }
+
+            async function handleMarkDebtAsPaid(id) {
+                const debt = state.debts.find(d => d.id === id);
+                if (!debt) return;
+
+                const originalAccount = getAccountById(debt.accountId);
+                const isLent = debt.type === 'lent'; // دين لك (تحصيل)
+                const isBorrowed = debt.type === 'borrowed'; // دين عليك (سداد)
+
+                const actionText = isLent ? 'تحصيل' : 'سداد';
+                const promptText = isLent ? 'الرجاء تحديد الحساب الذي ستودع فيه المبلغ المحصَّل:' : 'الرجاء تحديد الحساب الذي ستدفع منه الدين:';
+
+                // 1. إنشاء قائمة بالحسابات المتاحة بنفس عملة الدين
+                const availableAccounts = state.settings.accounts.filter(acc => acc.currency === originalAccount.currency);
+                const accountOptions = availableAccounts.reduce((opts, acc) => {
+                    opts[acc.id] = `${acc.name} (${acc.currency})`;
+                    return opts;
+                }, {});
+
+                // 2. سؤال المستخدم عن الحساب الذي يريد استخدامه
+                const accountSelection = await Swal.fire({
+                    title: `${actionText} الدين`,
+                    text: promptText,
+                    input: 'select',
+                    inputOptions: accountOptions,
+                    inputPlaceholder: 'اختر حسابًا',
+                    showCancelButton: true,
+                    confirmButtonText: 'التالي →',
+                    cancelButtonText: 'إلغاء',
+                    inputValidator: (value) => {
+                        if (!value) {
+                            return 'يجب عليك اختيار حساب!';
+                        }
+                    }
+                });
+
+                // إذا اختار المستخدم حسابًا وضغط "التالي"
+                if (accountSelection.value) {
+                    const selectedAccountId = accountSelection.value;
+
+                    // 3. سؤال المستخدم عن المبلغ
+                    const { value: amount } = await Swal.fire({
+                        title: `مبلغ ال${actionText}`,
+                        html: `المبلغ المتبقي: <b>${formatCurrency(debt.amount, originalAccount.currency)}</b><br>أدخل المبلغ الذي تود ${actionText}ه.`,
+                        input: 'number',
+                        inputValue: debt.amount,
+                        showCancelButton: true,
+                        confirmButtonText: `تأكيد ال${actionText}`,
+                        cancelButtonText: 'إلغاء',
+                        inputValidator: (value) => {
+                            if (!value || value <= 0) return 'الرجاء إدخال مبلغ صحيح!';
+                            if (value > debt.amount) return `المبلغ أكبر من الدين المتبقي!`;
+
+                            // التحقق من الرصيد فقط عند السداد (الدين عليك)
+                            if (isBorrowed) {
+                                const selectedAccountBalance = calculateTotals().accounts[selectedAccountId]?.balance || 0;
+                                if (selectedAccountBalance < value) {
+                                    const selectedAccount = getAccountById(selectedAccountId);
+                                    return `الرصيد في حساب (${selectedAccount.name}) غير كافٍ!`;
+                                }
+                            }
+                        }
+                    });
+
+                    // 4. إذا أدخل المستخدم مبلغًا صحيحًا
+                    if (amount) {
+                        const paymentAmount = parseFloat(amount);
+
+                        // إنشاء العملية المالية بالحساب المختار
+                        state.transactions.push({
+                            id: generateId(),
+                            type: isLent ? 'income' : 'expense',
+                            accountId: selectedAccountId, // استخدام الحساب المختار
+                            amount: paymentAmount,
+                            category: isLent ? 'debt-collected' : 'debt-paid',
+                            date: dayjs().format('YYYY-MM-DD'),
+                            notes: `${actionText} جزء من دين ${debt.person}`
+                        });
+
+                        // تحديث الدين
+                        debt.amount -= paymentAmount;
+                        if (debt.amount < 0.01) {
+                            debt.amount = 0;
+                            debt.status = 'paid';
+                        }
+
+                        updateAndRerender();
+                        const finalAccount = getAccountById(selectedAccountId);
+                        Swal.fire('تم!', `تم ${actionText} مبلغ ${formatCurrency(paymentAmount, finalAccount.currency)} بنجاح.`, 'success');
+                    }
+                }
+            }
+
+            function setTheme(theme) {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                state.settings.theme = theme;
+                saveState();
+
+                if (['reports', 'dashboard', 'monthlySummary'].includes(currentView)) {
+                    renderView(currentView);
+                }
+            }
+
+            const amiriFontBase64 = `
+AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAoT1MvMnRLy58AAAIkAAAAYGNtYXDZDoEQAAACUAAAAAhnbHlmP9Ig2AAAApwAAACRtYXhwAT8BHAAAAsgAAAAgbmFtZWRyyfEAAAMUAAABp3Bvc3Szh2E3AAAFQAAAACBwcmVwAAUAAAAABAAAAAABAAAAAQAAAY4AzAABAAAAAQAAAAAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAEAAEAAADzDwPiAAA=
+  `;
+
+            async function handlePrintReport() {
+                const startDate = document.getElementById('report-start-date').value;
+                const endDate = document.getElementById('report-end-date').value;
+                const activeCurrency = document.querySelector('.report-currency-tab.bg-blue-500')?.dataset.currency;
+
+                if (!startDate || !endDate) {
+                    return Swal.fire('خطأ', 'الرجاء تحديد تاريخ البداية والنهاية.', 'error');
+                }
+
+                const filteredTxs = state.transactions
+                    .filter(tx => {
+                        const account = getAccountById(tx.accountId);
+                        return account && account.currency === activeCurrency && dayjs(tx.date).isBetween(startDate, endDate, null, '[]');
+                    })
+                    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                if (filteredTxs.length === 0) {
+                    return Swal.fire('لا توجد بيانات', `لا توجد عمليات بالعملة (${activeCurrency}) في الفترة المحددة.`, 'info');
+                }
+
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+
+                    // تحميل الخط
+                    doc.addFileToVFS("Amiri-Regular.ttf", amiriFontBase64);
+                    doc.addFont("Amiri-Regular.ttf", "Amiri", "normal");
+                    doc.setFont("Amiri");
+                    doc.setR2L(true);
+
+                    doc.setFontSize(22);
+                    doc.text("تقرير مالي", 105, 20, { align: "center" });
+                    doc.setFontSize(12);
+                    doc.text(`العملة: ${activeCurrency}`, 200, 30, { align: "right" });
+                    doc.text(`الفترة من: ${startDate} إلى: ${endDate}`, 200, 37, { align: "right" });
+
+                    const tableData = filteredTxs.map(tx => {
+                        const category = getCategoryById(tx.category);
+                        const account = getAccountById(tx.accountId);
+                        return [
+                            tx.notes || "-",
+                            `${tx.type === 'income' ? '+' : '-'} ${tx.amount.toLocaleString()}`,
+                            account?.name || "",
+                            `${category?.icon || ''} ${category?.name || ''}`,
+                            tx.date
+                        ];
+                    });
+
+                    doc.autoTable({
+                        startY: 45,
+                        head: [['الوصف', 'المبلغ', 'الحساب', 'الفئة', 'التاريخ']],
+                        body: tableData,
+                        theme: 'grid',
+                        styles: {
+                            font: 'Amiri',
+                            halign: 'right'
+                        },
+                        headStyles: {
+                            halign: 'center',
+                            fillColor: [41, 128, 185],
+                            textColor: 255
+                        },
+                        columnStyles: {
+                            1: { halign: 'center' },
+                            4: { halign: 'center' }
+                        }
+                    });
+
+                    doc.save(`report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
+                } catch (error) {
+                    console.error("PDF Generation Error:", error);
+                    Swal.fire('خطأ في الطباعة', 'حدث خطأ أثناء إنشاء ملف PDF. تأكد من أن الخطوط تم تحميلها بشكل صحيح.', 'error');
+                }
+            }
+
+            function exportData() { const dataStr = JSON.stringify(state, null, 2); const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr); const linkEl = document.createElement('a'); linkEl.setAttribute('href', dataUri); linkEl.setAttribute('download', `financial_data_${dayjs().format('YYYY-MM-DD')}.json`); linkEl.click(); }
+            function importData(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (re) => { try { const imported = JSON.parse(re.target.result); if (imported.settings && imported.transactions) { Swal.fire({ title: 'تأكيد الاستيراد', text: 'سيتم استبدال بياناتك الحالية. هل أنت متأكد؟', icon: 'warning', showCancelButton: true, confirmButtonText: 'نعم، استورد!', cancelButtonText: 'إلغاء' }).then(r => { if (r.isConfirmed) { state = imported; loadState(); updateAndRerender('dashboard'); Swal.fire('نجاح!', 'تم استيراد البيانات.', 'success'); } }); } } catch (err) { Swal.fire('خطأ', `فشل استيراد الملف: ${err.message}`, 'error'); } }; reader.readAsText(file); e.target.value = ''; }
+            function resetApp() { Swal.fire({ title: 'إعادة ضبط التطبيق', text: "سيتم حذف جميع بياناتك نهائياً.", icon: 'error', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذف كل شيء!', cancelButtonText: 'تراجع' }).then(r => { if (r.isConfirmed) { localStorage.removeItem('financeTrackerState'); init(); Swal.fire('تم!', 'تمت إعادة ضبط التطبيق.', 'success'); } }); }
+
+            // MODAL FUNCTIONS
+            function showTransactionModal(id = null) {
+                const form = document.getElementById('transaction-form'); form.reset();
+                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
+                document.getElementById('transaction-account').innerHTML = accountOptions;
+                document.getElementById('transaction-type').innerHTML = `<option value="expense">مصروف</option><option value="income">دخل</option>`;
+
+                if (id) {
+                    const tx = state.transactions.find(t => t.id === id);
+                    document.getElementById('transaction-modal-title').textContent = 'تعديل العملية';
+                    document.getElementById('transaction-id').value = tx.id;
+                    document.getElementById('transaction-account').value = tx.accountId;
+                    document.getElementById('transaction-type').value = tx.type;
+                    document.getElementById('transaction-amount').value = tx.amount;
+                    document.getElementById('transaction-date').value = tx.date;
+                    document.getElementById('transaction-notes').value = tx.notes;
+                    populateCategories(tx.type);
+                    document.getElementById('transaction-category').value = tx.category;
+                } else {
+                    document.getElementById('transaction-modal-title').textContent = 'إضافة عملية جديدة';
+                    document.getElementById('transaction-id').value = '';
+                    document.getElementById('transaction-date').value = dayjs().format('YYYY-MM-DD');
+                    populateCategories('expense');
+                }
+                document.getElementById('transaction-type').onchange = (e) => populateCategories(e.target.value);
+                transactionModal.classList.remove('hidden'); setTimeout(() => transactionModal.querySelector('.modal-content').classList.remove('scale-95'), 10);
+            }
+            function hideTransactionModal() { transactionModal.classList.add('hidden'); transactionModal.querySelector('.modal-content').classList.add('scale-95'); }
+
+            function showDebtModal() {
+                const form = document.getElementById('debt-form');
+                form.reset();
+                document.getElementById('debt-modal-title').textContent = 'إضافة دين جديد';
+                document.getElementById('debt-id').value = '';
+                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
+                document.getElementById('debt-account').innerHTML = accountOptions;
+                document.getElementById('debt-date').value = dayjs().format('YYYY-MM-DD');
+                debtModal.classList.remove('hidden');
+                setTimeout(() => debtModal.querySelector('.modal-content').classList.remove('scale-95'), 10);
+            }
+            function hideDebtModal() { debtModal.classList.add('hidden'); debtModal.querySelector('.modal-content').classList.add('scale-95'); }
+
+            function showAccountModal(id = null) {
+                const form = document.getElementById('account-form');
+                form.reset();
+                const hasTransactions = id ? state.transactions.some(tx => tx.accountId === id) : false;
+
+                if (id) {
+                    const account = getAccountById(id);
+                    document.getElementById('account-modal-title').textContent = 'تعديل حساب';
+                    document.getElementById('account-id').value = account.id;
+                    document.getElementById('account-name').value = account.name;
+                    document.getElementById('account-currency').value = account.currency;
+                    // لا تسمح بتغيير العملة إذا كان هناك عمليات مرتبطة بالحساب
+                    document.getElementById('account-currency').disabled = hasTransactions;
+                } else {
+                    document.getElementById('account-modal-title').textContent = 'إضافة حساب جديد';
+                    document.getElementById('account-id').value = '';
+                    document.getElementById('account-currency').disabled = false;
+                }
+                accountModal.classList.remove('hidden');
+                setTimeout(() => accountModal.querySelector('.modal-content').classList.remove('scale-95'), 10);
+            }
+            function hideAccountModal() { accountModal.classList.add('hidden'); accountModal.querySelector('.modal-content').classList.add('scale-95'); }
+
+            function populateCategories(type) { document.getElementById('transaction-category').innerHTML = state.categories.filter(c => c.type === type && !c.id.includes('exchange') && !c.id.includes('internal-transfer') && !c.id.includes('debt')).map(c => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join(''); }
+
+            function updateAndRerender(view = currentView) {
+                saveState();
+                // If the view is accounts detail, we need to pass the accountId again
+                if (view === 'accounts' && document.getElementById('transactions-list')?.dataset.accountId) {
+                    renderView(view, { accountId: document.getElementById('transactions-list').dataset.accountId });
+                } else {
+                    renderView(view);
+                }
+            }
+
+            function init() {
+                loadState();
+                if (state.settings.theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                }
+                buildNavigation();
+                attachEventListeners();
+                renderView('dashboard');
+                setTimeout(() => {
+                    splashScreen.style.opacity = '0';
+                    appContainer.style.opacity = '1';
+                    setTimeout(() => splashScreen.style.display = 'none', 500);
+                }, 500);
+            }
+
+            init();
+        });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('✅ Service Worker Registered'))
+                .catch(err => console.error('❌ Failed to Register Service Worker', err));
+        }
+    </script>
+</body>
+
+</html>
