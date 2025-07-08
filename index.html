@@ -601,22 +601,22 @@
             `;
             }
 
-            function getAccountsView(accountId = null) {
-                if (accountId) {
-                    return getAccountDetailView(accountId);
-                }
-                const allTimeTotals = calculateTotals();
-                const accountCards = state.settings.accounts.map(account => {
-                    const balance = allTimeTotals.accounts[account.id]?.balance || 0;
-                    return `<button data-account-id="${account.id}" class="account-card-btn bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-200">
+                    function getAccountsView(accountId = null) {
+            if (accountId) {
+                return getAccountDetailView(accountId);
+            }
+            const allTimeTotals = calculateTotals();
+            const accountCards = state.settings.accounts.map(account => {
+                const balance = allTimeTotals.accounts[account.id]?.balance || 0;
+                return `<button data-account-id="${account.id}" class="account-card-btn bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-200">
                         <p class="text-lg text-gray-500 dark:text-gray-400">${account.name}</p>
                         <p class="text-4xl font-bold text-gray-900 dark:text-white mt-2">${formatCurrency(balance, account.currency)}</p>
                     </button>`;
-                }).join('');
+            }).join('');
+            
+            const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
 
-                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
-
-                return `
+            return `
                 <div class="space-y-6">
                     <h2 class="text-2xl font-bold">الحسابات وأرصدتها</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${accountCards || '<p>لا توجد حسابات. أضف حساباً من الإعدادات.</p>'}</div>
@@ -636,17 +636,21 @@
                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div>
                                 <label for="exchange-from-amount" class="block text-sm">المبلغ المحول</label>
-                                <div class="flex mt-1">
-                                    <input type="number" id="exchange-from-amount" placeholder="0.00" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-r-md">
-                                    <select id="exchange-from-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-l-md">${accountOptions}</select>
+                                <!-- START: Responsive Fix -->
+                                <div class="flex flex-col sm:flex-row mt-1">
+                                    <input type="number" id="exchange-from-amount" placeholder="0.00" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-md sm:rounded-r-md sm:rounded-l-none">
+                                    <select id="exchange-from-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-md sm:rounded-l-md sm:rounded-r-none mt-1 sm:mt-0">${accountOptions}</select>
                                 </div>
+                                <!-- END: Responsive Fix -->
                             </div>
                             <div>
                                 <label for="exchange-rate" class="block text-sm">سعر الصرف (<span id="exchange-rate-helper"></span>)</label>
-                                <div class="flex mt-1">
-                                    <input type="number" step="any" id="exchange-rate" placeholder="سعر الصرف" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-r-md">
-                                    <select id="exchange-to-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-l-md">${accountOptions}</select>
+                                <!-- START: Responsive Fix -->
+                                <div class="flex flex-col sm:flex-row mt-1">
+                                    <input type="number" step="any" id="exchange-rate" placeholder="سعر الصرف" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-md sm:rounded-r-md sm:rounded-l-none">
+                                    <select id="exchange-to-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-md sm:rounded-l-md sm:rounded-r-none mt-1 sm:mt-0">${accountOptions}</select>
                                 </div>
+                                <!-- END: Responsive Fix -->
                             </div>
                          </div>
                          <div class="mt-4 bg-blue-100 dark:bg-blue-900/50 p-3 rounded-lg text-center">
@@ -657,7 +661,7 @@
                     </div>
                 </div>
             `;
-            }
+        }
 
             function getAccountDetailView(accountId) {
                 const account = getAccountById(accountId);
