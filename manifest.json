@@ -1,6 +1,6 @@
 {
-    "name": "مديري المالي",
-    "short_name": "المالي",
+    "name": "محفظتي الماليه",
+    "short_name": "محفظتي",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#ffffff",
