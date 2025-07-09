@@ -288,7 +288,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://unpkg.com/jspdf-autotable@3.5.23/dist/jspdf.plugin.autotable.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
 
 
@@ -601,22 +601,22 @@
             `;
             }
 
-                    function getAccountsView(accountId = null) {
-            if (accountId) {
-                return getAccountDetailView(accountId);
-            }
-            const allTimeTotals = calculateTotals();
-            const accountCards = state.settings.accounts.map(account => {
-                const balance = allTimeTotals.accounts[account.id]?.balance || 0;
-                return `<button data-account-id="${account.id}" class="account-card-btn bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-200">
+            function getAccountsView(accountId = null) {
+                if (accountId) {
+                    return getAccountDetailView(accountId);
+                }
+                const allTimeTotals = calculateTotals();
+                const accountCards = state.settings.accounts.map(account => {
+                    const balance = allTimeTotals.accounts[account.id]?.balance || 0;
+                    return `<button data-account-id="${account.id}" class="account-card-btn bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-200">
                         <p class="text-lg text-gray-500 dark:text-gray-400">${account.name}</p>
                         <p class="text-4xl font-bold text-gray-900 dark:text-white mt-2">${formatCurrency(balance, account.currency)}</p>
                     </button>`;
-            }).join('');
-            
-            const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
+                }).join('');
 
-            return `
+                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
+
+                return `
                 <div class="space-y-6">
                     <h2 class="text-2xl font-bold">الحسابات وأرصدتها</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">${accountCards || '<p>لا توجد حسابات. أضف حساباً من الإعدادات.</p>'}</div>
@@ -661,7 +661,7 @@
                     </div>
                 </div>
             `;
-        }
+            }
 
             function getAccountDetailView(accountId) {
                 const account = getAccountById(accountId);
@@ -776,14 +776,32 @@
             function getDebtsView() {
                 return `
                 <div class="space-y-6">
-                    <div class="flex justify-between items-center">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                         <h2 class="text-2xl font-bold">إدارة الديون</h2>
                         <div id="debt-currency-tabs" class="flex space-x-1 space-x-reverse bg-gray-200 dark:bg-gray-700 p-1 rounded-lg"></div>
                     </div>
-                     <div class="mt-4">
-                        <input type="text" id="debt-search-input" placeholder="ابحث باسم الشخص..." class="w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded-md p-2 focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    
+                    <!-- Search and Filters Section -->
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <input type="text" id="debt-search-input" placeholder="ابحث باسم الشخص..." class="w-full sm:col-span-1 bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                            <select id="debt-period-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="all">كل الأوقات</option>
+                                <option value="month">هذا الشهر</option>
+                                <option value="year">هذه السنة</option>
+                            </select>
+                            <select id="debt-type-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="all">كل الأنواع (لك وعليك)</option>
+                                <option value="lent">ديون لك فقط</option>
+                                <option value="borrowed">ديون عليك فقط</option>
+                            </select>
+                        </div>
                     </div>
-                    <div id="debt-summary-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+
+                    <!-- Dynamic Summary Cards -->
+                    <div id="debt-summary-cards" class="hidden"></div>
+
+                    <!-- Debt Lists -->
                     <div id="debt-lists-container"></div>
                 </div>`;
             }
@@ -1305,46 +1323,88 @@
                 const summaryCardsEl = document.getElementById('debt-summary-cards');
                 const listsContainerEl = document.getElementById('debt-lists-container');
                 const searchInput = document.getElementById('debt-search-input');
-                if (!currencyTabsEl || !listsContainerEl) return;
+                const periodFilter = document.getElementById('debt-period-filter');
+                const typeFilter = document.getElementById('debt-type-filter');
+
+                if (!currencyTabsEl || !listsContainerEl || !summaryCardsEl) return;
 
                 const searchTerm = (searchInput?.value || '').trim().toLowerCase();
+                const periodValue = periodFilter?.value || 'all';
+                const typeValue = typeFilter?.value || 'all';
 
+                // Render currency tabs
                 currencyTabsEl.innerHTML = getUniqueCurrencies().map(c => `<button data-currency="${c}" class="debt-currency-tab px-4 py-1 text-sm font-medium rounded-md ${c === activeCurrency ? 'bg-blue-500 text-white shadow' : 'text-gray-600 dark:text-gray-300'}">${c}</button>`).join('');
 
-                const relevantDebts = state.debts.filter(d => {
+                // Filter debts based on all criteria
+                let filteredDebts = state.debts.filter(d => {
                     const account = getAccountById(d.accountId);
-                    return account && account.currency === activeCurrency;
+                    if (!account || account.currency !== activeCurrency) return false;
+
+                    const searchMatch = !searchTerm || d.person.toLowerCase().includes(searchTerm);
+                    const typeMatch = typeValue === 'all' || d.type === typeValue;
+
+                    let periodMatch = true;
+                    if (periodValue !== 'all') {
+                        const debtDate = dayjs(d.date);
+                        const now = dayjs();
+                        if (periodValue === 'month') periodMatch = debtDate.isSame(now, 'month');
+                        if (periodValue === 'year') periodMatch = debtDate.isSame(now, 'year');
+                    }
+
+                    return searchMatch && typeMatch && periodMatch;
                 });
 
-                if (searchTerm) {
-                    summaryCardsEl.innerHTML = '';
-                    const matchedDebts = relevantDebts
-                        .filter(d => d.person.toLowerCase().includes(searchTerm))
-                        .sort((a, b) => new Date(b.date) - new Date(a.date));
+                // Calculate and display summary if there are filters or search term
+                if (searchTerm || periodValue !== 'all' || typeValue !== 'all') {
+                    if (filteredDebts.length > 0) {
+                        const lentTotal = filteredDebts.filter(d => d.type === 'lent').reduce((sum, d) => sum + d.originalAmount, 0);
+                        const borrowedTotal = filteredDebts.filter(d => d.type === 'borrowed').reduce((sum, d) => sum + d.originalAmount, 0);
+                        const lentRemaining = filteredDebts.filter(d => d.type === 'lent').reduce((sum, d) => sum + d.amount, 0);
+                        const borrowedRemaining = filteredDebts.filter(d => d.type === 'borrowed').reduce((sum, d) => sum + d.amount, 0);
 
-                    if (matchedDebts.length > 0) {
-                        const personName = matchedDebts[0].person;
-                        listsContainerEl.innerHTML = `
-                        <h3 class="text-xl font-semibold mt-4 mb-3">سجل الديون لـ: <span class="text-blue-600 dark:text-blue-400">${personName}</span></h3>
-                        <div class="space-y-3">${matchedDebts.map(d => createDebtItemHTML(d)).join('')}</div>`;
+                        summaryCardsEl.innerHTML = `
+                    <div class="summary-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">إجمالي الديون لك</p>
+                            <p class="text-lg font-bold text-green-600 dark:text-green-400">${formatCurrency(lentTotal, activeCurrency)}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">إجمالي الديون عليك</p>
+                            <p class="text-lg font-bold text-red-600 dark:text-red-400">${formatCurrency(borrowedTotal, activeCurrency)}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">المتبقي لك</p>
+                            <p class="text-lg font-bold text-green-600 dark:text-green-400">${formatCurrency(lentRemaining, activeCurrency)}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">المتبقي عليك</p>
+                            <p class="text-lg font-bold text-red-600 dark:text-red-400">${formatCurrency(borrowedRemaining, activeCurrency)}</p>
+                        </div>
+                    </div>`;
+                        summaryCardsEl.classList.remove('hidden');
                     } else {
-                        listsContainerEl.innerHTML = '<p class="text-center text-gray-500 py-8">لم يتم العثور على ديون مطابقة للبحث.</p>';
+                        summaryCardsEl.classList.add('hidden');
+                    }
+                } else {
+                    summaryCardsEl.classList.add('hidden');
+                }
+
+                // Render the lists
+                if (filteredDebts.length > 0) {
+                    const createListHTML = (list) => list.length === 0 ? `<p class="text-center text-gray-500 dark:text-gray-400 py-4">لا توجد ديون هنا.</p>` : list.sort((a, b) => new Date(b.date) - new Date(a.date)).map(d => createDebtItemHTML(d)).join('');
+
+                    if (searchTerm || typeValue !== 'all') {
+                        listsContainerEl.innerHTML = `<div class="space-y-3">${createListHTML(filteredDebts)}</div>`;
+                    } else {
+                        const lentDebts = filteredDebts.filter(d => d.type === 'lent');
+                        const borrowedDebts = filteredDebts.filter(d => d.type === 'borrowed');
+                        listsContainerEl.innerHTML = `
+                        <div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-green-500 pb-1">ديون لك</h3><div class="space-y-3">${createListHTML(lentDebts)}</div></div>
+                        <div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-red-500 pb-1">ديون عليك</h3><div class="space-y-3">${createListHTML(borrowedDebts)}</div></div>`;
                     }
 
                 } else {
-                    const unpaidDebts = relevantDebts.filter(d => d.status === 'unpaid');
-                    const lentDebts = unpaidDebts.filter(d => d.type === 'lent');
-                    const borrowedDebts = unpaidDebts.filter(d => d.type === 'borrowed');
-
-                    summaryCardsEl.innerHTML = `
-                    <div class="bg-green-100 dark:bg-green-900/50 p-4 rounded-lg"><p class="font-semibold text-green-800 dark:text-green-300">إجمالي الديون لك</p><p class="text-2xl font-bold text-green-900 dark:text-green-200">${formatCurrency(lentDebts.reduce((s, d) => s + d.amount, 0), activeCurrency)}</p></div>
-                    <div class="bg-red-100 dark:bg-red-900/50 p-4 rounded-lg"><p class="font-semibold text-red-800 dark:text-red-300">إجمالي الديون عليك</p><p class="text-2xl font-bold text-red-900 dark:text-red-200">${formatCurrency(borrowedDebts.reduce((s, d) => s + d.amount, 0), activeCurrency)}</p></div>`;
-
-                    const createListHTML = (list) => list.length === 0 ? `<p class="text-center text-gray-500 dark:text-gray-400 py-4">لا توجد ديون هنا.</p>` : list.map(d => createDebtItemHTML(d)).join('');
-
-                    listsContainerEl.innerHTML = `
-                    <div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-green-500 pb-1">ديون لك (لم يتم تحصيلها)</h3><div class="space-y-3">${createListHTML(lentDebts)}</div></div>
-                    <div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-red-500 pb-1">ديون عليك (لم يتم سدادها)</h3><div class="space-y-3">${createListHTML(borrowedDebts)}</div></div>`;
+                    listsContainerEl.innerHTML = '<p class="text-center text-gray-500 py-8">لم يتم العثور على ديون مطابقة للبحث.</p>';
                 }
             }
 
@@ -1691,12 +1751,14 @@
 
 
             function attachDebtsListeners() {
-                const searchInput = document.getElementById('debt-search-input');
                 const activeCurrency = document.querySelector('.debt-currency-tab.bg-blue-500')?.dataset.currency || getUniqueCurrencies()[0];
 
-                searchInput?.addEventListener('input', () => {
-                    renderDebtsList(activeCurrency);
-                });
+                const reRender = () => renderDebtsList(activeCurrency);
+
+                // Attach listeners to filters
+                document.getElementById('debt-search-input')?.addEventListener('input', reRender);
+                document.getElementById('debt-period-filter')?.addEventListener('change', reRender);
+                document.getElementById('debt-type-filter')?.addEventListener('change', reRender);
 
                 mainContent.addEventListener('click', e => {
                     const currencyTab = e.target.closest('.debt-currency-tab');
@@ -2128,7 +2190,50 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
             }
 
             function exportData() { const dataStr = JSON.stringify(state, null, 2); const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr); const linkEl = document.createElement('a'); linkEl.setAttribute('href', dataUri); linkEl.setAttribute('download', `financial_data_${dayjs().format('YYYY-MM-DD')}.json`); linkEl.click(); }
-            function importData(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (re) => { try { const imported = JSON.parse(re.target.result); if (imported.settings && imported.transactions) { Swal.fire({ title: 'تأكيد الاستيراد', text: 'سيتم استبدال بياناتك الحالية. هل أنت متأكد؟', icon: 'warning', showCancelButton: true, confirmButtonText: 'نعم، استورد!', cancelButtonText: 'إلغاء' }).then(r => { if (r.isConfirmed) { state = imported; loadState(); updateAndRerender('dashboard'); Swal.fire('نجاح!', 'تم استيراد البيانات.', 'success'); } }); } } catch (err) { Swal.fire('خطأ', `فشل استيراد الملف: ${err.message}`, 'error'); } }; reader.readAsText(file); e.target.value = ''; }
+            function importData(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (re) => {
+                    try {
+                        const importedState = JSON.parse(re.target.result);
+                        if (importedState.settings && importedState.transactions) {
+                            Swal.fire({
+                                title: 'تأكيد الاستيراد',
+                                text: 'سيتم استبدال بياناتك الحالية بالكامل. هل أنت متأكد؟',
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: 'نعم، استورد!',
+                                cancelButtonText: 'إلغاء'
+                            }).then(result => {
+                                if (result.isConfirmed) {
+                                    state = importedState;
+
+                                    saveState();
+
+                                    setTheme(state.settings.theme || 'light');
+
+                                    buildNavigation();
+
+                                    attachNavListeners();
+
+                                    updateAndRerender('dashboard');
+
+                                    Swal.fire('نجاح!', 'تم استيراد البيانات بنجاح.', 'success');
+                                }
+                            });
+                        } else {
+                            throw new Error("ملف البيانات غير صالح أو تالف.");
+                        }
+                    } catch (err) {
+                        console.error("Import Error:", err);
+                        Swal.fire('خطأ في الاستيراد', `فشل تحميل الملف: ${err.message}`, 'error');
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = ''; // لإعادة تعيين حقل الإدخال للسماح بنفس الملف مرة أخرى
+            }
             function resetApp() { Swal.fire({ title: 'إعادة ضبط التطبيق', text: "سيتم حذف جميع بياناتك نهائياً.", icon: 'error', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'نعم، احذف كل شيء!', cancelButtonText: 'تراجع' }).then(r => { if (r.isConfirmed) { localStorage.removeItem('financeTrackerState'); init(); Swal.fire('تم!', 'تمت إعادة ضبط التطبيق.', 'success'); } }); }
 
             // MODAL FUNCTIONS
