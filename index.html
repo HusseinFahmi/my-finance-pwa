@@ -775,36 +775,71 @@
 
             function getDebtsView() {
                 return `
-                <div class="space-y-6">
-                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                        <h2 class="text-2xl font-bold">إدارة الديون</h2>
-                        <div id="debt-currency-tabs" class="flex space-x-1 space-x-reverse bg-gray-200 dark:bg-gray-700 p-1 rounded-lg"></div>
-                    </div>
-                    
-                    <!-- Search and Filters Section -->
-                    <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <input type="text" id="debt-search-input" placeholder="ابحث باسم الشخص..." class="w-full sm:col-span-1 bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
-                            <select id="debt-period-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
-                                <option value="all">كل الأوقات</option>
-                                <option value="month">هذا الشهر</option>
-                                <option value="year">هذه السنة</option>
-                            </select>
-                            <select id="debt-type-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
-                                <option value="all">كل الأنواع (لك وعليك)</option>
-                                <option value="lent">ديون لك فقط</option>
-                                <option value="borrowed">ديون عليك فقط</option>
-                            </select>
-                        </div>
-                    </div>
+    <div class="space-y-6">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+            <h2 class="text-2xl font-bold">إدارة الديون</h2>
+            <div id="debt-currency-tabs" class="flex space-x-1 space-x-reverse bg-gray-200 dark:bg-gray-700 p-1 rounded-lg"></div>
+        </div>
+        
+        <!-- Search and Filters Section -->
+        <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input type="text" id="debt-search-input" placeholder="ابحث باسم شخص لتجميع ديونه..." class="w-full sm:col-span-1 bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                <select id="debt-period-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                    <option value="all">كل الأوقات</option>
+                    <option value="month">هذا الشهر</option>
+                    <option value="year">هذه السنة</option>
+                </select>
+                <select id="debt-type-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
+                    <option value="all">كل الأنواع (لك وعليك)</option>
+                    <option value="lent">ديون لك فقط</option>
+                    <option value="borrowed">ديون عليك فقط</option>
+                </select>
+            </div>
+        </div>
 
-                    <!-- Dynamic Summary Cards -->
-                    <div id="debt-summary-cards" class="hidden"></div>
-
-                    <!-- Debt Lists -->
-                    <div id="debt-lists-container"></div>
-                </div>`;
+        <!-- Debt Lists or Aggregated Cards -->
+        <div id="debt-lists-container" class="space-y-4"></div>
+    </div>`;
             }
+
+            function createPersonDebtCardHTML(person, data, currency) {
+                const totalLent = data.lentItems.reduce((sum, debt) => sum + debt.amount, 0);
+                const totalBorrowed = data.borrowedItems.reduce((sum, debt) => sum + debt.amount, 0);
+
+                const lentSectionHTML = data.lentItems.length > 0 ? `
+        <div class="mt-3">
+            <div class="flex justify-between items-center border-b-2 border-green-500 pb-1 mb-2">
+                <h4 class="text-lg font-semibold text-green-600 dark:text-green-400">ديون لك منه</h4>
+                <span class="font-bold text-green-600 dark:text-green-400">${formatCurrency(totalLent, currency)}</span>
+            </div>
+            <div class="space-y-2">
+                ${data.lentItems.sort((a, b) => new Date(b.date) - new Date(a.date)).map(debt => createDebtItemHTML(debt)).join('')}
+            </div>
+        </div>
+    ` : '';
+
+                const borrowedSectionHTML = data.borrowedItems.length > 0 ? `
+        <div class="mt-4">
+            <div class="flex justify-between items-center border-b-2 border-red-500 pb-1 mb-2">
+                <h4 class="text-lg font-semibold text-red-600 dark:text-red-400">ديون عليك له</h4>
+                <span class="font-bold text-red-600 dark:text-red-400">${formatCurrency(totalBorrowed, currency)}</span>
+            </div>
+            <div class="space-y-2">
+                ${data.borrowedItems.sort((a, b) => new Date(b.date) - new Date(a.date)).map(debt => createDebtItemHTML(debt)).join('')}
+            </div>
+        </div>
+    ` : '';
+
+                return `
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg">
+        <h3 class="text-xl font-bold text-blue-600 dark:text-blue-400">${person}</h3>
+        ${lentSectionHTML}
+        ${borrowedSectionHTML}
+    </div>
+    `;
+            }
+
 
             function getBudgetsView(activeCurrency = getUniqueCurrencies()[0], month = dayjs().format('YYYY-MM')) {
                 const expenseCategories = state.categories.filter(c => c.type === 'expense' && !c.id.startsWith('exchange') && !c.id.startsWith('debt') && !c.id.startsWith('internal-transfer'));
@@ -1282,6 +1317,7 @@
                 </div>`;
             }
 
+
             function createDebtItemHTML(d) {
                 const account = getAccountById(d.accountId);
                 const isLent = d.type === 'lent';
@@ -1297,85 +1333,156 @@
                 }
 
                 const buttonsHTML = !isPaid ? `
-                <div class="flex items-center space-x-2 space-x-reverse">
-                    <button class="mark-paid-btn text-xs px-3 py-1 rounded-full ${isLent ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 hover:bg-green-200' : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200 hover:bg-red-200'}" data-id="${d.id}">${isLent ? 'تحصيل' : 'سداد'}</button>
-                    <button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                </div>
-            ` : `<button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
+    <div class="flex items-center space-x-2 space-x-reverse">
+        <button class="mark-paid-btn text-xs px-3 py-1 rounded-full ${isLent ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 hover:bg-green-200' : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200 hover:bg-red-200'}" data-id="${d.id}">${isLent ? 'تحصيل' : 'سداد'}</button>
+        <button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+    </div>
+` : `<button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
+
+                // --- تعديل لإضافة الملاحظات ---
+                const notesHTML = d.notes ? `<p class="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">"${d.notes}"</p>` : '';
 
                 return `
-                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex items-start justify-between ${isPaid ? 'opacity-60' : ''}">
-                    <div>
-                        <p class="font-bold text-lg">${d.person}</p>
-                        ${statusHTML}
-                        ${!isPaid && d.amount < (d.originalAmount || d.amount) ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">المبلغ الأصلي: ${formatCurrency(d.originalAmount, account?.currency || '')}</p>` : ''}
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${dayjs(d.date).format('D MMMM YYYY')}</p>
-                    </div>
-                    <div class="flex flex-col items-end space-y-2">
-                        ${buttonsHTML}
-                    </div>
-                </div>
-            `;
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex items-start justify-between ${isPaid ? 'opacity-60' : ''}">
+        <div>
+            <p class="font-bold text-lg">${d.person}</p>
+            ${statusHTML}
+            ${!isPaid && d.amount < (d.originalAmount || d.amount) ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">المبلغ الأصلي: ${formatCurrency(d.originalAmount, account?.currency || '')}</p>` : ''}
+            ${notesHTML}
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${dayjs(d.date).format('D MMMM YYYY')}</p>
+        </div>
+        <div class="flex flex-col items-end space-y-2">
+            ${buttonsHTML}
+        </div>
+    </div>
+    `;
             }
+
+            function createAggregatedDebtCardHTML(person, aggregatedDebts, currency) {
+                const { lentItems, borrowedItems } = aggregatedDebts;
+
+                // --- NEW: Calculate totals and the net difference ---
+                const totalLent = lentItems.reduce((sum, debt) => sum + debt.amount, 0);
+                const totalBorrowed = borrowedItems.reduce((sum, debt) => sum + debt.amount, 0);
+                const netDifference = totalLent - totalBorrowed;
+
+                let netSummaryHTML = '';
+                if (netDifference > 0) {
+                    netSummaryHTML = `
+            <div class="mt-2 text-center bg-green-100 dark:bg-green-900/50 p-2 rounded-lg">
+                <p class="text-sm text-green-800 dark:text-green-300">الصافي لك</p>
+                <p class="text-xl font-bold text-green-600 dark:text-green-400">${formatCurrency(netDifference, currency)}</p>
+            </div>
+        `;
+                } else if (netDifference < 0) {
+                    netSummaryHTML = `
+            <div class="mt-2 text-center bg-red-100 dark:bg-red-900/50 p-2 rounded-lg">
+                <p class="text-sm text-red-800 dark:text-red-300">الصافي عليك</p>
+                <p class="text-xl font-bold text-red-600 dark:text-red-400">${formatCurrency(Math.abs(netDifference), currency)}</p>
+            </div>
+        `;
+                } else { // netDifference is 0
+                    netSummaryHTML = `
+            <div class="mt-2 text-center bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">
+                <p class="text-lg font-bold text-gray-800 dark:text-gray-300">الحساب متوازن</p>
+            </div>
+        `;
+                }
+
+                // دالة مساعدة لإنشاء قسم تفصيلي (لك أو عليك)
+                const createDetailsSection = (title, items, colorClass) => {
+                    if (items.length === 0) return '';
+
+                    const total = items.reduce((sum, debt) => sum + debt.amount, 0);
+
+                    return `
+        <details class="group mt-3">
+            <summary class="flex justify-between items-center p-2 rounded-lg cursor-pointer list-none hover:bg-gray-100 dark:hover:bg-gray-700">
+                <div class="font-semibold ${colorClass}">${title}</div>
+                <div class="flex items-center">
+                    <span class="font-bold text-lg mr-2 ${colorClass}">${formatCurrency(total, currency)}</span>
+                    <svg class="w-5 h-5 transition-transform duration-200 group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </div>
+            </summary>
+            <div class="mt-2 pl-4 border-r-2 dark:border-gray-600 space-y-3">
+                ${items.sort((a, b) => new Date(b.date) - new Date(a.date)).map(debt => createDebtItemHTML(debt)).join('')}
+            </div>
+        </details>
+        `;
+                };
+
+                const lentSection = createDetailsSection('ديون لك منه', lentItems, 'text-green-600 dark:text-green-400');
+                const borrowedSection = createDetailsSection('ديون عليك له', borrowedItems, 'text-red-600 dark:text-red-400');
+
+                return `
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg">
+        <div class="border-b dark:border-gray-700 pb-2">
+            <h3 class="text-xl text-center font-bold text-blue-600 dark:text-blue-400">${person}</h3>
+            ${netSummaryHTML}
+        </div>
+        ${lentSection}
+        ${borrowedSection}
+    </div>
+    `;
+            }
+
 
             function renderDebtsList(activeCurrency) {
                 const currencyTabsEl = document.getElementById('debt-currency-tabs');
-                const summaryCardsEl = document.getElementById('debt-summary-cards');
                 const listsContainerEl = document.getElementById('debt-lists-container');
                 const searchInput = document.getElementById('debt-search-input');
                 const periodFilter = document.getElementById('debt-period-filter');
                 const typeFilter = document.getElementById('debt-type-filter');
 
-                if (!currencyTabsEl || !listsContainerEl || !summaryCardsEl) return;
+                if (!currencyTabsEl || !listsContainerEl) return;
 
                 const searchTerm = (searchInput?.value || '').trim().toLowerCase();
-                const periodValue = periodFilter?.value || 'all';
-                const typeValue = typeFilter?.value || 'all';
 
                 // Render currency tabs
                 currencyTabsEl.innerHTML = getUniqueCurrencies().map(c => `<button data-currency="${c}" class="debt-currency-tab px-4 py-1 text-sm font-medium rounded-md ${c === activeCurrency ? 'bg-blue-500 text-white shadow' : 'text-gray-600 dark:text-gray-300'}">${c}</button>`).join('');
 
-                // Hide summary cards by default when searching
-                summaryCardsEl.classList.add('hidden');
-
-                let allDebts = state.debts.filter(d => {
+                let allDebtsForCurrency = state.debts.filter(d => {
                     const account = getAccountById(d.accountId);
                     return account && account.currency === activeCurrency;
                 });
 
-                // --- NEW LOGIC: AGGREGATE DEBTS BY PERSON WHEN SEARCHING ---
+                // --- تبديل المنطق: عرض مجمع عند البحث، أو عرض عادي ---
                 if (searchTerm) {
-                    const debtsByPerson = allDebts
-                        .filter(d => d.person.toLowerCase().includes(searchTerm))
+                    // --- وضع العرض المجمع ---
+                    periodFilter.disabled = true;
+                    typeFilter.disabled = true;
+
+                    const debtsByPerson = allDebtsForCurrency
+                        .filter(d => d.person.toLowerCase().includes(searchTerm) && d.status === 'unpaid')
                         .reduce((acc, debt) => {
                             if (!acc[debt.person]) {
-                                acc[debt.person] = { lent: 0, borrowed: 0, debtIds: [] };
+                                acc[debt.person] = { lentItems: [], borrowedItems: [] };
                             }
-                            acc[debt.person][debt.type] += debt.amount;
-                            acc[debt.person].debtIds.push(debt.id);
+                            if (debt.type === 'lent') {
+                                acc[debt.person].lentItems.push(debt);
+                            } else {
+                                acc[debt.person].borrowedItems.push(debt);
+                            }
                             return acc;
                         }, {});
 
                     if (Object.keys(debtsByPerson).length > 0) {
-                        listsContainerEl.innerHTML = Object.entries(debtsByPerson).map(([person, totals]) => {
-                            let personHTML = `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow space-y-4">
-                            <h3 class="text-xl font-bold text-blue-600 dark:text-blue-400">${person}</h3>`;
-
-                            if (totals.lent > 0) {
-                                personHTML += createAggregatedDebtRow('lent', person, totals.lent, totals.debtIds, activeCurrency);
-                            }
-                            if (totals.borrowed > 0) {
-                                personHTML += createAggregatedDebtRow('borrowed', person, totals.borrowed, totals.debtIds, activeCurrency);
-                            }
-                            personHTML += `</div>`;
-                            return personHTML;
-                        }).join('');
+                        listsContainerEl.innerHTML = Object.entries(debtsByPerson)
+                            .map(([person, data]) => createAggregatedDebtCardHTML(person, data, activeCurrency))
+                            .join('');
                     } else {
-                        listsContainerEl.innerHTML = '<p class="text-center text-gray-500 py-8">لم يتم العثور على ديون مطابقة للبحث.</p>';
+                        listsContainerEl.innerHTML = '<p class="text-center text-gray-500 py-8">لم يتم العثور على ديون غير مسددة تطابق هذا الاسم.</p>';
                     }
 
-                } else { // Original view (no search term)
-                    const filteredDebts = allDebts.filter(d => {
+                } else {
+                    // --- وضع العرض العادي ---
+                    periodFilter.disabled = false;
+                    typeFilter.disabled = false;
+
+                    const periodValue = periodFilter?.value || 'all';
+                    const typeValue = typeFilter?.value || 'all';
+
+                    const filteredDebts = allDebtsForCurrency.filter(d => {
                         const typeMatch = typeValue === 'all' || d.type === typeValue;
                         let periodMatch = true;
                         if (periodValue !== 'all') {
@@ -1387,40 +1494,26 @@
                         return typeMatch && periodMatch;
                     });
 
-                    const createListHTML = (list) => list.length === 0 ? `<p class="text-center text-gray-500 dark:text-gray-400 py-4">لا توجد ديون هنا.</p>` : list.sort((a, b) => new Date(b.date) - new Date(a.date)).map(d => createDebtItemHTML(d)).join('');
+                    const createListHTML = (list) => list.length === 0 ? `<p class="text-center text-gray-500 dark:text-gray-400 py-4">لا توجد ديون هنا.</p>` : list.sort((a, b) => new Date(b.date) - new Date(a.date)).map(d => createDebtItemHTML(d)).join('<div class="my-2"></div>');
 
                     const lentDebts = filteredDebts.filter(d => d.type === 'lent' && d.status === 'unpaid');
                     const borrowedDebts = filteredDebts.filter(d => d.type === 'borrowed' && d.status === 'unpaid');
+                    const paidDebts = filteredDebts.filter(d => d.status === 'paid');
 
-                    listsContainerEl.innerHTML = `
-                   <div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-green-500 pb-1">ديون لك (لم يتم تحصيلها)</h3><div class="space-y-3">${createListHTML(lentDebts)}</div></div>
-                   <div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-red-500 pb-1">ديون عليك (لم يتم سدادها)</h3><div class="space-y-3">${createListHTML(borrowedDebts)}</div></div>`;
+                    let html = '';
+                    if (typeValue === 'all' || typeValue === 'lent') {
+                        html += `<div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-green-500 pb-1">ديون لك (لم يتم تحصيلها)</h3><div class="space-y-3">${createListHTML(lentDebts)}</div></div>`;
+                    }
+                    if (typeValue === 'all' || typeValue === 'borrowed') {
+                        html += `<div class="mt-6"><h3 class="text-xl font-semibold mb-3 border-b-2 border-red-500 pb-1">ديون عليك (لم يتم سدادها)</h3><div class="space-y-3">${createListHTML(borrowedDebts)}</div></div>`;
+                    }
+
+                    if (typeValue === 'all' && paidDebts.length > 0) {
+                        html += `<div class="mt-8"><h3 class="text-xl font-semibold mb-3 border-b-2 border-gray-400 pb-1">أرشيف الديون المسددة</h3><div class="space-y-3">${createListHTML(paidDebts)}</div></div>`;
+                    }
+
+                    listsContainerEl.innerHTML = html;
                 }
-            }
-
-            function createAggregatedDebtRow(type, person, totalAmount, debtIds, currency) {
-                const isLent = type === 'lent';
-                const title = isLent ? 'إجمالي الديون لك منه' : 'إجمالي الديون عليك له';
-                const buttonText = isLent ? 'تحصيل مبلغ' : 'سداد مبلغ';
-                const amountColor = isLent ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
-                const buttonColor = isLent ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
-
-                return `
-                <div class="flex justify-between items-center border-t dark:border-gray-700 pt-3">
-                    <div>
-                        <p class="font-semibold">${title}</p>
-                        <p class="text-2xl font-bold ${amountColor}">${formatCurrency(totalAmount, currency)}</p>
-                    </div>
-                    <button class="aggregated-payment-btn px-4 py-2 text-white rounded-md shadow ${buttonColor}"
-                            data-type="${type}"
-                            data-person="${person}"
-                            data-total-amount="${totalAmount}"
-                            data-debt-ids='${JSON.stringify(debtIds)}'
-                            data-currency="${currency}">
-                        ${buttonText}
-                    </button>
-                </div>
-            `;
             }
 
 
@@ -1622,87 +1715,87 @@
                 document.getElementById('account-form')?.addEventListener('submit', handleAccountFormSubmit);
             }
 
-                    function attachAccountsListeners(accountId = null) {
-            if (accountId) {
-                // Detail view listeners
-                document.getElementById('back-to-accounts-btn')?.addEventListener('click', () => renderView('accounts'));
-                
-                const refilterDetail = () => renderAccountDetailTransactions(accountId);
-                document.getElementById('search-input')?.addEventListener('input', refilterDetail);
-                document.getElementById('filter-period')?.addEventListener('change', refilterDetail);
-                document.getElementById('filter-category')?.addEventListener('change', refilterDetail);
-                document.getElementById('filter-type')?.addEventListener('change', refilterDetail);
-                document.getElementById('sort-date')?.addEventListener('change', refilterDetail);
-                
-                // Attach listeners for edit/delete buttons on transactions
-                document.getElementById('transactions-list')?.addEventListener('click', e => {
-                    const editBtn = e.target.closest('.edit-btn');
-                    const deleteBtn = e.target.closest('.delete-btn');
-                    if (editBtn) showTransactionModal(editBtn.dataset.id);
-                    if (deleteBtn) handleDeleteTransaction(deleteBtn.dataset.id);
-                });
+            function attachAccountsListeners(accountId = null) {
+                if (accountId) {
+                    // Detail view listeners
+                    document.getElementById('back-to-accounts-btn')?.addEventListener('click', () => renderView('accounts'));
 
-                renderAccountDetailTransactions(accountId);
-            } else {
-                // Main view listeners
-                document.querySelectorAll('.account-card-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        renderView('accounts', { accountId: btn.dataset.accountId });
+                    const refilterDetail = () => renderAccountDetailTransactions(accountId);
+                    document.getElementById('search-input')?.addEventListener('input', refilterDetail);
+                    document.getElementById('filter-period')?.addEventListener('change', refilterDetail);
+                    document.getElementById('filter-category')?.addEventListener('change', refilterDetail);
+                    document.getElementById('filter-type')?.addEventListener('change', refilterDetail);
+                    document.getElementById('sort-date')?.addEventListener('change', refilterDetail);
+
+                    // Attach listeners for edit/delete buttons on transactions
+                    document.getElementById('transactions-list')?.addEventListener('click', e => {
+                        const editBtn = e.target.closest('.edit-btn');
+                        const deleteBtn = e.target.closest('.delete-btn');
+                        if (editBtn) showTransactionModal(editBtn.dataset.id);
+                        if (deleteBtn) handleDeleteTransaction(deleteBtn.dataset.id);
                     });
-                });
-                document.getElementById('execute-internal-transfer-btn')?.addEventListener('click', handleInternalTransfer);
-                document.getElementById('execute-exchange-btn')?.addEventListener('click', handleExecuteExchange);
 
-                // --- START: Dynamic Internal Transfer Logic ---
-                const fromInternalSelect = document.getElementById('internal-transfer-from');
-                const toInternalSelect = document.getElementById('internal-transfer-to');
+                    renderAccountDetailTransactions(accountId);
+                } else {
+                    // Main view listeners
+                    document.querySelectorAll('.account-card-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            renderView('accounts', { accountId: btn.dataset.accountId });
+                        });
+                    });
+                    document.getElementById('execute-internal-transfer-btn')?.addEventListener('click', handleInternalTransfer);
+                    document.getElementById('execute-exchange-btn')?.addEventListener('click', handleExecuteExchange);
 
-                const updateInternalToAccountOptions = () => {
-                    if (!fromInternalSelect || !toInternalSelect) return;
-                    
-                    const selectedFromId = fromInternalSelect.value;
-                    const fromAccount = getAccountById(selectedFromId);
-                    if (!fromAccount) return;
+                    // --- START: Dynamic Internal Transfer Logic ---
+                    const fromInternalSelect = document.getElementById('internal-transfer-from');
+                    const toInternalSelect = document.getElementById('internal-transfer-to');
 
-                    // Filter accounts to only include those with the same currency, excluding the source account
-                    const compatibleAccounts = state.settings.accounts.filter(
-                        acc => acc.currency === fromAccount.currency && acc.id !== selectedFromId
-                    );
-                    
-                    toInternalSelect.innerHTML = compatibleAccounts.map(acc => 
-                        `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`
-                    ).join('');
+                    const updateInternalToAccountOptions = () => {
+                        if (!fromInternalSelect || !toInternalSelect) return;
 
-                    if (compatibleAccounts.length === 0) {
-                        toInternalSelect.innerHTML = '<option value="">لا يوجد حساب آخر بنفس العملة</option>';
-                    }
-                };
-                
-                fromInternalSelect?.addEventListener('change', updateInternalToAccountOptions);
-                // Initial call to set the options correctly on page load
-                updateInternalToAccountOptions();
-                // --- END: Dynamic Internal Transfer Logic ---
+                        const selectedFromId = fromInternalSelect.value;
+                        const fromAccount = getAccountById(selectedFromId);
+                        if (!fromAccount) return;
+
+                        // Filter accounts to only include those with the same currency, excluding the source account
+                        const compatibleAccounts = state.settings.accounts.filter(
+                            acc => acc.currency === fromAccount.currency && acc.id !== selectedFromId
+                        );
+
+                        toInternalSelect.innerHTML = compatibleAccounts.map(acc =>
+                            `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`
+                        ).join('');
+
+                        if (compatibleAccounts.length === 0) {
+                            toInternalSelect.innerHTML = '<option value="">لا يوجد حساب آخر بنفس العملة</option>';
+                        }
+                    };
+
+                    fromInternalSelect?.addEventListener('change', updateInternalToAccountOptions);
+                    // Initial call to set the options correctly on page load
+                    updateInternalToAccountOptions();
+                    // --- END: Dynamic Internal Transfer Logic ---
 
 
-                const exchangeFromAccount = document.getElementById('exchange-from-account');
-                const exchangeToAccount = document.getElementById('exchange-to-account');
-                const updateExchangePreview = () => { 
-                    const fromAccount = getAccountById(exchangeFromAccount?.value);
-                    const toAccount = getAccountById(exchangeToAccount?.value);
-                    if(!fromAccount || !toAccount) return;
+                    const exchangeFromAccount = document.getElementById('exchange-from-account');
+                    const exchangeToAccount = document.getElementById('exchange-to-account');
+                    const updateExchangePreview = () => {
+                        const fromAccount = getAccountById(exchangeFromAccount?.value);
+                        const toAccount = getAccountById(exchangeToAccount?.value);
+                        if (!fromAccount || !toAccount) return;
 
-                    const amount = parseFloat(document.getElementById('exchange-from-amount')?.value) || 0;
-                    const rate = parseFloat(document.getElementById('exchange-rate')?.value) || 0;
-                    const toAmount = amount * rate;
-                    document.getElementById('exchange-result').textContent = formatCurrency(toAmount, toAccount.currency);
-                    document.getElementById('exchange-rate-helper').textContent = `1 ${fromAccount.currency} = ? ${toAccount.currency}`;
-                };
-                ['exchange-from-amount', 'exchange-rate', 'exchange-from-account', 'exchange-to-account'].forEach(id => {
-                    document.getElementById(id)?.addEventListener('input', updateExchangePreview);
-                });
-                updateExchangePreview();
+                        const amount = parseFloat(document.getElementById('exchange-from-amount')?.value) || 0;
+                        const rate = parseFloat(document.getElementById('exchange-rate')?.value) || 0;
+                        const toAmount = amount * rate;
+                        document.getElementById('exchange-result').textContent = formatCurrency(toAmount, toAccount.currency);
+                        document.getElementById('exchange-rate-helper').textContent = `1 ${fromAccount.currency} = ? ${toAccount.currency}`;
+                    };
+                    ['exchange-from-amount', 'exchange-rate', 'exchange-from-account', 'exchange-to-account'].forEach(id => {
+                        document.getElementById(id)?.addEventListener('input', updateExchangePreview);
+                    });
+                    updateExchangePreview();
+                }
             }
-        }
 
 
 
@@ -1801,23 +1894,26 @@
 
 
             function attachDebtsListeners() {
-                const activeCurrency = document.querySelector('.debt-currency-tab.bg-blue-500')?.dataset.currency || getUniqueCurrencies()[0];
-                const reRender = () => renderDebtsList(activeCurrency);
+                const reRenderBasedOnCurrency = () => {
+                    const activeCurrency = document.querySelector('.debt-currency-tab.bg-blue-500')?.dataset.currency || getUniqueCurrencies()[0];
+                    renderDebtsList(activeCurrency);
+                };
 
-                document.getElementById('debt-search-input')?.addEventListener('input', reRender);
-                document.getElementById('debt-period-filter')?.addEventListener('change', reRender);
-                document.getElementById('debt-type-filter')?.addEventListener('change', reRender);
+                // Add listener for live search
+                document.getElementById('debt-search-input')?.addEventListener('input', reRenderBasedOnCurrency);
+
+                // Listeners for filters
+                document.getElementById('debt-period-filter')?.addEventListener('change', reRenderBasedOnCurrency);
+                document.getElementById('debt-type-filter')?.addEventListener('change', reRenderBasedOnCurrency);
 
                 mainContent.addEventListener('click', e => {
                     const currencyTab = e.target.closest('.debt-currency-tab');
                     const markPaidBtn = e.target.closest('.mark-paid-btn');
                     const deleteDebtBtn = e.target.closest('.delete-debt-btn');
-                    const aggregatedBtn = e.target.closest('.aggregated-payment-btn'); // <-- الزر الجديد
 
                     if (currencyTab) renderDebtsList(currencyTab.dataset.currency);
                     if (markPaidBtn) handleMarkDebtAsPaid(markPaidBtn.dataset.id);
                     if (deleteDebtBtn) handleDeleteDebt(deleteDebtBtn.dataset.id);
-                    if (aggregatedBtn) handleAggregatedPayment(aggregatedBtn.dataset); // <-- استدعاء دالة جديدة
                 });
             }
 
