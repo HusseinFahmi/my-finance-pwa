@@ -1361,7 +1361,7 @@
             function createAggregatedDebtCardHTML(person, aggregatedDebts, currency) {
                 const { lentItems, borrowedItems } = aggregatedDebts;
 
-                // --- NEW: Calculate totals and the net difference ---
+                // --- Calculate totals and the net difference ---
                 const totalLent = lentItems.reduce((sum, debt) => sum + debt.amount, 0);
                 const totalBorrowed = borrowedItems.reduce((sum, debt) => sum + debt.amount, 0);
                 const netDifference = totalLent - totalBorrowed;
@@ -1373,6 +1373,10 @@
                 <p class="text-sm text-green-800 dark:text-green-300">الصافي لك</p>
                 <p class="text-xl font-bold text-green-600 dark:text-green-400">${formatCurrency(netDifference, currency)}</p>
             </div>
+            <button class="aggregated-pay-btn w-full mt-2 px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 text-sm font-bold"
+                data-type="lent" data-person="${person}" data-total-amount="${totalLent}" data-debt-ids='${JSON.stringify(lentItems.map(d => d.id))}' data-currency="${currency}">
+                تحصيل إجمالي
+            </button>
         `;
                 } else if (netDifference < 0) {
                     netSummaryHTML = `
@@ -1380,6 +1384,10 @@
                 <p class="text-sm text-red-800 dark:text-red-300">الصافي عليك</p>
                 <p class="text-xl font-bold text-red-600 dark:text-red-400">${formatCurrency(Math.abs(netDifference), currency)}</p>
             </div>
+            <button class="aggregated-pay-btn w-full mt-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 text-sm font-bold"
+                data-type="borrowed" data-person="${person}" data-total-amount="${totalBorrowed}" data-debt-ids='${JSON.stringify(borrowedItems.map(d => d.id))}' data-currency="${currency}">
+                سداد إجمالي
+            </button>
         `;
                 } else { // netDifference is 0
                     netSummaryHTML = `
@@ -1389,7 +1397,7 @@
         `;
                 }
 
-                // دالة مساعدة لإنشاء قسم تفصيلي (لك أو عليك)
+                // Helper function to create a details section (lent or borrowed)
                 const createDetailsSection = (title, items, colorClass) => {
                     if (items.length === 0) return '';
 
@@ -1446,9 +1454,9 @@
                     return account && account.currency === activeCurrency;
                 });
 
-                // --- تبديل المنطق: عرض مجمع عند البحث، أو عرض عادي ---
+                // --- NEW LOGIC: Switch between aggregated and list view ---
                 if (searchTerm) {
-                    // --- وضع العرض المجمع ---
+                    // --- AGGREGATED VIEW (WHEN SEARCHING) ---
                     periodFilter.disabled = true;
                     typeFilter.disabled = true;
 
@@ -1475,7 +1483,7 @@
                     }
 
                 } else {
-                    // --- وضع العرض العادي ---
+                    // --- NORMAL LIST VIEW (DEFAULT) ---
                     periodFilter.disabled = false;
                     typeFilter.disabled = false;
 
@@ -1910,10 +1918,12 @@
                     const currencyTab = e.target.closest('.debt-currency-tab');
                     const markPaidBtn = e.target.closest('.mark-paid-btn');
                     const deleteDebtBtn = e.target.closest('.delete-debt-btn');
+                    const aggregatedPayBtn = e.target.closest('.aggregated-pay-btn'); // NEW
 
                     if (currencyTab) renderDebtsList(currencyTab.dataset.currency);
                     if (markPaidBtn) handleMarkDebtAsPaid(markPaidBtn.dataset.id);
                     if (deleteDebtBtn) handleDeleteDebt(deleteDebtBtn.dataset.id);
+                    if (aggregatedPayBtn) handleAggregatedPayment(aggregatedPayBtn.dataset); // NEW
                 });
             }
 
@@ -1925,11 +1935,12 @@
                 const isLent = type === 'lent';
                 const actionText = isLent ? 'تحصيل' : 'سداد';
 
-                // 1. سؤال المستخدم عن المبلغ
+                // 1. Ask the user for the amount
                 const { value: paymentAmountStr } = await Swal.fire({
                     title: `${actionText} من/إلى ${person}`,
                     html: `إجمالي المبلغ المتبقي: <b>${formatCurrency(total, currency)}</b><br>أدخل المبلغ الذي تود ${actionText}ه.`,
                     input: 'number',
+                    inputPlaceholder: `مثال: 300000`,
                     inputValue: '',
                     showCancelButton: true,
                     confirmButtonText: 'التالي &rarr;',
@@ -1943,10 +1954,14 @@
                 if (!paymentAmountStr) return;
                 let paymentAmount = parseFloat(paymentAmountStr);
 
-                // 2. سؤال المستخدم عن الحساب
+                // 2. Ask the user for the account
                 const availableAccounts = state.settings.accounts.filter(acc => acc.currency === currency);
+                if (availableAccounts.length === 0) {
+                    return Swal.fire('خطأ', `لا يوجد لديك حسابات بعملة ${currency} لتنفيذ العملية.`, 'error');
+                }
                 const accountOptions = availableAccounts.reduce((opts, acc) => {
-                    opts[acc.id] = `${acc.name} (${acc.currency})`;
+                    // ===== THIS IS THE MODIFIED LINE =====
+                    opts[acc.id] = `${acc.name} (${acc.currency})`; // Does not show balance
                     return opts;
                 }, {});
 
@@ -1959,7 +1974,7 @@
                     confirmButtonText: `تأكيد ال${actionText}`,
                     inputValidator: (value) => {
                         if (!value) return 'يجب اختيار حساب!';
-                        // التحقق من الرصيد فقط عند السداد
+                        // Check balance only when paying (borrowed)
                         if (!isLent) {
                             const balance = calculateTotals().accounts[value]?.balance || 0;
                             if (balance < paymentAmount) return 'الرصيد في هذا الحساب غير كافٍ!';
@@ -1969,35 +1984,39 @@
 
                 if (!selectedAccountId) return;
 
-                // 3. تحديث الديون (من الأقدم للأحدث)
+                // 3. Update debt records (from oldest to newest)
                 const debtsToUpdate = state.debts
                     .filter(d => parsedDebtIds.includes(d.id))
                     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
+                let remainingPayment = paymentAmount;
                 for (const debt of debtsToUpdate) {
-                    if (paymentAmount <= 0) break;
-                    const amountToPay = Math.min(debt.amount, paymentAmount);
-                    debt.amount -= amountToPay;
-                    paymentAmount -= amountToPay;
-                    if (debt.amount < 0.01) {
+                    if (remainingPayment <= 0) break;
+                    const amountToSettleOnThisDebt = Math.min(debt.amount, remainingPayment);
+                    debt.amount -= amountToSettleOnThisDebt;
+                    remainingPayment -= amountToSettleOnThisDebt;
+
+                    if (debt.amount < 0.01) { // Use a small tolerance for floating point issues
+                        debt.amount = 0;
                         debt.status = 'paid';
                     }
                 }
 
-                // 4. إنشاء عملية مالية واحدة بالمبلغ الإجمالي
+                // 4. Create a single financial transaction for the total amount
                 state.transactions.push({
                     id: generateId(),
                     type: isLent ? 'income' : 'expense',
                     accountId: selectedAccountId,
-                    amount: parseFloat(paymentAmountStr),
+                    amount: paymentAmount, // The actual paid amount
                     category: isLent ? 'debt-collected' : 'debt-paid',
                     date: dayjs().format('YYYY-MM-DD'),
                     notes: `${actionText} إجمالي من ${person}`
                 });
 
                 updateAndRerender();
-                Swal.fire('تم بنجاح!', `تم ${actionText} مبلغ ${formatCurrency(parseFloat(paymentAmountStr), currency)} بنجاح.`, 'success');
+                Swal.fire('تم بنجاح!', `تم ${actionText} مبلغ ${formatCurrency(paymentAmount, currency)} بنجاح.`, 'success');
             }
+
 
             function attachBudgetsListeners() {
                 const container = document.getElementById('budgets-container');
