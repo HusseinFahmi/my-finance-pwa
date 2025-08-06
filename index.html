@@ -1725,7 +1725,7 @@
 
             function attachAccountsListeners(accountId = null) {
                 if (accountId) {
-                    // Detail view listeners
+                    // Detail view listeners (لا يوجد تغيير هنا)
                     document.getElementById('back-to-accounts-btn')?.addEventListener('click', () => renderView('accounts'));
 
                     const refilterDetail = () => renderAccountDetailTransactions(accountId);
@@ -1735,7 +1735,6 @@
                     document.getElementById('filter-type')?.addEventListener('change', refilterDetail);
                     document.getElementById('sort-date')?.addEventListener('change', refilterDetail);
 
-                    // Attach listeners for edit/delete buttons on transactions
                     document.getElementById('transactions-list')?.addEventListener('click', e => {
                         const editBtn = e.target.closest('.edit-btn');
                         const deleteBtn = e.target.closest('.delete-btn');
@@ -1744,8 +1743,9 @@
                     });
 
                     renderAccountDetailTransactions(accountId);
+
                 } else {
-                    // Main view listeners
+                    // Main view listeners (هنا تمت التعديلات)
                     document.querySelectorAll('.account-card-btn').forEach(btn => {
                         btn.addEventListener('click', () => {
                             renderView('accounts', { accountId: btn.dataset.accountId });
@@ -1754,43 +1754,40 @@
                     document.getElementById('execute-internal-transfer-btn')?.addEventListener('click', handleInternalTransfer);
                     document.getElementById('execute-exchange-btn')?.addEventListener('click', handleExecuteExchange);
 
-                    // --- START: Dynamic Internal Transfer Logic ---
                     const fromInternalSelect = document.getElementById('internal-transfer-from');
                     const toInternalSelect = document.getElementById('internal-transfer-to');
 
                     const updateInternalToAccountOptions = () => {
                         if (!fromInternalSelect || !toInternalSelect) return;
-
                         const selectedFromId = fromInternalSelect.value;
                         const fromAccount = getAccountById(selectedFromId);
                         if (!fromAccount) return;
-
-                        // Filter accounts to only include those with the same currency, excluding the source account
                         const compatibleAccounts = state.settings.accounts.filter(
                             acc => acc.currency === fromAccount.currency && acc.id !== selectedFromId
                         );
-
                         toInternalSelect.innerHTML = compatibleAccounts.map(acc =>
                             `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`
                         ).join('');
-
                         if (compatibleAccounts.length === 0) {
                             toInternalSelect.innerHTML = '<option value="">لا يوجد حساب آخر بنفس العملة</option>';
                         }
                     };
 
                     fromInternalSelect?.addEventListener('change', updateInternalToAccountOptions);
-                    // Initial call to set the options correctly on page load
                     updateInternalToAccountOptions();
-                    // --- END: Dynamic Internal Transfer Logic ---
-
 
                     const exchangeFromAccount = document.getElementById('exchange-from-account');
                     const exchangeToAccount = document.getElementById('exchange-to-account');
+
                     const updateExchangePreview = () => {
                         const fromAccount = getAccountById(exchangeFromAccount?.value);
                         const toAccount = getAccountById(exchangeToAccount?.value);
-                        if (!fromAccount || !toAccount) return;
+                        // قد يكون الحقل "إلى" فارغاً مؤقتاً، لذلك نتحقق منه
+                        if (!fromAccount || !toAccount) {
+                            document.getElementById('exchange-result').textContent = formatCurrency(0, '');
+                            document.getElementById('exchange-rate-helper').textContent = ``;
+                            return;
+                        };
 
                         const amount = parseFloat(document.getElementById('exchange-from-amount')?.value) || 0;
                         const rate = parseFloat(document.getElementById('exchange-rate')?.value) || 0;
@@ -1798,10 +1795,46 @@
                         document.getElementById('exchange-result').textContent = formatCurrency(toAmount, toAccount.currency);
                         document.getElementById('exchange-rate-helper').textContent = `1 ${fromAccount.currency} = ? ${toAccount.currency}`;
                     };
-                    ['exchange-from-amount', 'exchange-rate', 'exchange-from-account', 'exchange-to-account'].forEach(id => {
+
+                    // دالة جديدة: تقوم بتحديث الخيارات في حقل "إلى حساب"
+                    const updateExchangeToAccountOptions = () => {
+                        if (!exchangeFromAccount || !exchangeToAccount) return;
+
+                        const selectedFromId = exchangeFromAccount.value;
+                        const fromAccount = getAccountById(selectedFromId);
+                        if (!fromAccount) return;
+
+                        // فلترة الحسابات لإظهار الحسابات ذات العملات المختلفة فقط
+                        const compatibleToAccounts = state.settings.accounts.filter(
+                            acc => acc.currency !== fromAccount.currency
+                        );
+
+                        if (compatibleToAccounts.length > 0) {
+                            // إعادة بناء الخيارات الجديدة
+                            exchangeToAccount.innerHTML = compatibleToAccounts.map(acc =>
+                                `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`
+                            ).join('');
+                            exchangeToAccount.disabled = false;
+                        } else {
+                            // في حال عدم وجود عملات أخرى للمصارفة معها
+                            exchangeToAccount.innerHTML = `<option value="">لا توجد عملات أخرى</option>`;
+                            exchangeToAccount.disabled = true;
+                        }
+
+                        // تحديث نافذة المعاينة بعد تغيير الخيارات
+                        updateExchangePreview();
+                    };
+
+                    // ربط المستمعات بالأحداث
+                    ['exchange-from-amount', 'exchange-rate', 'exchange-to-account'].forEach(id => {
                         document.getElementById(id)?.addEventListener('input', updateExchangePreview);
                     });
-                    updateExchangePreview();
+
+                    // الأهم: ربط حقل "من حساب" بالدالة الجديدة التي تحدث الخيارات
+                    exchangeFromAccount?.addEventListener('change', updateExchangeToAccountOptions);
+
+                    // استدعاء الدوال مرة واحدة عند تحميل الصفحة لضبط الحالة الأولية الصحيحة
+                    updateExchangeToAccountOptions();
                 }
             }
 
