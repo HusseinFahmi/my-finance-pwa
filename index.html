@@ -35,6 +35,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/js-arabic@1.0.0/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bidi-js@1.0.3/dist/bidi.min.js"></script>
+
+
     <!-- Custom Styles and Animations -->
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
@@ -2394,117 +2398,133 @@
 AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAoT1MvMnRLy58AAAIkAAAAYGNtYXDZDoEQAAACUAAAAAhnbHlmP9Ig2AAAApwAAACRtYXhwAT8BHAAAAsgAAAAgbmFtZWRyyfEAAAMUAAABp3Bvc3Szh2E3AAAFQAAAACBwcmVwAAUAAAAABAAAAAABAAAAAQAAAY4AzAABAAAAAQAAAAAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAEAAEAAADzDwPiAAA=
   `;
 
-async function handlePrintReport() {
-    const startDate = document.getElementById('report-start-date').value;
-    const endDate = document.getElementById('report-end-date').value;
-    const activeCurrency = document.querySelector('.report-currency-tab.bg-blue-500')?.dataset.currency;
-
-    if (!startDate || !endDate) {
-        return Swal.fire('خطأ', 'الرجاء تحديد تاريخ البداية والنهاية.', 'error');
-    }
-
-    Swal.fire({
-        title: 'جاري إعداد التقرير...',
-        text: 'قد يستغرق الأمر بضع ثوانٍ.',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-
-    try {
-        const filteredTxs = state.transactions
-            .filter(tx => {
-                const account = getAccountById(tx.accountId);
-                return account && account.currency === activeCurrency &&
-                    dayjs(tx.date).isBetween(startDate, endDate, null, '[]');
-            })
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (filteredTxs.length === 0) {
-            Swal.close();
-            return Swal.fire('لا توجد بيانات', `لا توجد عمليات بالعملة (${activeCurrency}) في الفترة المحددة.`, 'info');
-        }
-
-        // --- تحميل الخط Amiri محليًا ---
-        const fontUrl = 'assets/fonts/Amiri-Regular.ttf';
-        const response = await fetch(fontUrl);
-
-        if (!response.ok) {
-            throw new Error('فشل تحميل ملف الخط من المسار المحلي.');
-        }
-
-        const fontBlob = await response.blob();
-        const fontBase64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(fontBlob);
-        });
-
-        // --- إعداد jsPDF واستخدام الخط ---
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-
-        doc.addFileToVFS("Amiri-Regular.ttf", fontBase64);
-        doc.addFont("Amiri-Regular.ttf", "Amiri", "normal");
-        doc.setFont("Amiri");
-        doc.setR2L(true);
-
-        doc.setFontSize(22);
-        doc.text("تقرير مالي", 105, 20, { align: "center" });
-        doc.setFontSize(12);
-        doc.text(`العملة: ${activeCurrency}`, 200, 30, { align: "right" });
-        doc.text(`الفترة من: ${startDate} إلى: ${endDate}`, 200, 37, { align: "right" });
-
-        const tableData = filteredTxs.map(tx => {
-            const category = getCategoryById(tx.category);
-            const account = getAccountById(tx.accountId);
-            return [
-                tx.notes || "-",
-                `${tx.type === 'income' ? '+' : '-'} ${tx.amount.toLocaleString()}`,
-                account?.name || "",
-                `${category?.icon || ''} ${category?.name || ''}`,
-                tx.date
-            ];
-        });
-
-        doc.autoTable({
-            startY: 45,
-            head: [['الوصف', 'المبلغ', 'الحساب', 'الفئة', 'التاريخ']],
-            body: tableData,
-            theme: 'grid',
-            styles: {
-                font: 'Amiri',
-                halign: 'right'
-            },
-            headStyles: {
-                halign: 'center',
-                fillColor: [41, 128, 185],
-                textColor: 255,
-                fontStyle: 'bold'
-            },
-            columnStyles: {
-                0: { halign: 'right' },
-                1: { halign: 'center' },
-                2: { halign: 'right' },
-                3: { halign: 'right' },
-                4: { halign: 'center' }
+            function fixArabicText(text) {
+                const reshaped = ArabicPersianReshaper.Reshaper.Reshape(text);
+                return bidi.getVisualString(reshaped);
             }
-        });
 
-        Swal.close();
-        doc.save(`report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
 
-    } catch (error) {
-        console.error("PDF Generation Error:", error);
-        Swal.fire({
-            icon: 'error',
-            title: 'خطأ في الطباعة',
-            text: error.message || 'حدث خطأ غير متوقع أثناء إنشاء الملف.'
-        });
-    }
-}
+            async function handlePrintReport() {
+                const startDate = document.getElementById('report-start-date').value;
+                const endDate = document.getElementById('report-end-date').value;
+                const activeCurrency = document.querySelector('.report-currency-tab.bg-blue-500')?.dataset.currency;
+
+                if (!startDate || !endDate) {
+                    return Swal.fire('خطأ', 'الرجاء تحديد تاريخ البداية والنهاية.', 'error');
+                }
+
+                Swal.fire({
+                    title: 'جاري إعداد التقرير...',
+                    text: 'قد يستغرق الأمر بضع ثوانٍ.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                try {
+                    const filteredTxs = state.transactions
+                        .filter(tx => {
+                            const account = getAccountById(tx.accountId);
+                            return account && account.currency === activeCurrency &&
+                                dayjs(tx.date).isBetween(startDate, endDate, null, '[]');
+                        })
+                        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    if (filteredTxs.length === 0) {
+                        Swal.close();
+                        return Swal.fire('لا توجد بيانات', `لا توجد عمليات بالعملة (${activeCurrency}) في الفترة المحددة.`, 'info');
+                    }
+
+                    // --- تحميل الخط Amiri محليًا ---
+                    const fontUrl = 'assets/fonts/Amiri-Regular.ttf';
+                    const response = await fetch(fontUrl);
+
+                    if (!response.ok) {
+                        throw new Error('فشل تحميل ملف الخط من المسار المحلي.');
+                    }
+
+                    const fontBlob = await response.blob();
+                    const fontBase64 = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(fontBlob);
+                    });
+
+                    // --- إعداد jsPDF واستخدام الخط ---
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+
+                    doc.addFileToVFS("Amiri-Regular.ttf", fontBase64);
+                    doc.addFont("Amiri-Regular.ttf", "Amiri", "normal");
+                    doc.setFont("Amiri");
+                    doc.setR2L(true);
+
+                    doc.setFontSize(22);
+                    doc.text("تقرير مالي", 105, 20, { align: "center" });
+                    doc.setFontSize(12);
+                    doc.text(`العملة: ${activeCurrency}`, 200, 30, { align: "right" });
+                    doc.text(`الفترة من: ${startDate} إلى: ${endDate}`, 200, 37, { align: "right" });
+
+                    const tableData = filteredTxs.map(tx => {
+                        const category = getCategoryById(tx.category);
+                        const account = getAccountById(tx.accountId);
+                        return [
+                            fixArabicText(tx.notes || "-"),
+                            `${tx.type === 'income' ? '+' : '-'} ${tx.amount.toLocaleString()}`,
+                            fixArabicText(account?.name || ""),
+                            fixArabicText(`${category?.icon || ''} ${category?.name || ''}`),
+                            tx.date
+                        ];
+                    });
+
+
+                    doc.autoTable({
+                        startY: 45,
+
+                        head: [[
+                            fixArabicText('الوصف'),
+                            fixArabicText('المبلغ'),
+                            fixArabicText('الحساب'),
+                            fixArabicText('الفئة'),
+                            fixArabicText('التاريخ')
+                        ]],
+
+
+                        body: tableData,
+                        theme: 'grid',
+                        styles: {
+                            font: 'Amiri',
+                            halign: 'right'
+                        },
+                        headStyles: {
+                            halign: 'center',
+                            fillColor: [41, 128, 185],
+                            textColor: 255,
+                            fontStyle: 'bold'
+                        },
+                        columnStyles: {
+                            0: { halign: 'right' },
+                            1: { halign: 'center' },
+                            2: { halign: 'right' },
+                            3: { halign: 'right' },
+                            4: { halign: 'center' }
+                        }
+                    });
+
+                    Swal.close();
+                    doc.save(`report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
+
+                } catch (error) {
+                    console.error("PDF Generation Error:", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ في الطباعة',
+                        text: error.message || 'حدث خطأ غير متوقع أثناء إنشاء الملف.'
+                    });
+                }
+            }
 
 
             function exportData() { const dataStr = JSON.stringify(state, null, 2); const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr); const linkEl = document.createElement('a'); linkEl.setAttribute('href', dataUri); linkEl.setAttribute('download', `financial_data_${dayjs().format('YYYY-MM-DD')}.json`); linkEl.click(); }
