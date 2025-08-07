@@ -2398,11 +2398,6 @@
 AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAoT1MvMnRLy58AAAIkAAAAYGNtYXDZDoEQAAACUAAAAAhnbHlmP9Ig2AAAApwAAACRtYXhwAT8BHAAAAsgAAAAgbmFtZWRyyfEAAAMUAAABp3Bvc3Szh2E3AAAFQAAAACBwcmVwAAUAAAAABAAAAAABAAAAAQAAAY4AzAABAAAAAQAAAAAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAEAAEAAADzDwPiAAA=
   `;
 
-            function fixArabicText(text) {
-                const reshaped = ArabicPersianReshaper.Reshaper.Reshape(text);
-                return bidi.getVisualString(reshaped);
-            }
-
 
             async function handlePrintReport() {
                 const startDate = document.getElementById('report-start-date').value;
@@ -2459,7 +2454,7 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     doc.addFileToVFS("Amiri-Regular.ttf", fontBase64);
                     doc.addFont("Amiri-Regular.ttf", "Amiri", "normal");
                     doc.setFont("Amiri");
-                    doc.setR2L(true);
+                    doc.setR2L(true); // تأكيد اتجاه النص من اليمين لليسار
 
                     doc.setFontSize(22);
                     doc.text("تقرير مالي", 105, 20, { align: "center" });
@@ -2471,32 +2466,23 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                         const category = getCategoryById(tx.category);
                         const account = getAccountById(tx.accountId);
                         return [
-                            fixArabicText(tx.notes || "-"),
+                            tx.notes || "-",
                             `${tx.type === 'income' ? '+' : '-'} ${tx.amount.toLocaleString()}`,
-                            fixArabicText(account?.name || ""),
-                            fixArabicText(`${category?.icon || ''} ${category?.name || ''}`),
+                            account?.name || "",
+                            `${category?.icon || ''} ${category?.name || ''}`,
                             tx.date
                         ];
                     });
 
-
                     doc.autoTable({
                         startY: 45,
-
-                        head: [[
-                            fixArabicText('الوصف'),
-                            fixArabicText('المبلغ'),
-                            fixArabicText('الحساب'),
-                            fixArabicText('الفئة'),
-                            fixArabicText('التاريخ')
-                        ]],
-
-
+                        head: [['الوصف', 'المبلغ', 'الحساب', 'الفئة', 'التاريخ']],
                         body: tableData,
                         theme: 'grid',
                         styles: {
                             font: 'Amiri',
-                            halign: 'right'
+                            halign: 'right', // محاذاة النص من اليمين
+                            cellPadding: 5 // إضافة مسافة للتنسيق
                         },
                         headStyles: {
                             halign: 'center',
@@ -2525,6 +2511,7 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     });
                 }
             }
+
 
 
             function exportData() { const dataStr = JSON.stringify(state, null, 2); const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr); const linkEl = document.createElement('a'); linkEl.setAttribute('href', dataUri); linkEl.setAttribute('download', `financial_data_${dayjs().format('YYYY-MM-DD')}.json`); linkEl.click(); }
