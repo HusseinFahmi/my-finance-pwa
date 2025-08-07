@@ -35,8 +35,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/js-arabic@1.0.0/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bidi-js@1.0.3/dist/bidi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
 
 
     <!-- Custom Styles and Animations -->
@@ -2431,38 +2432,7 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                         return Swal.fire('لا توجد بيانات', `لا توجد عمليات بالعملة (${activeCurrency}) في الفترة المحددة.`, 'info');
                     }
 
-                    // --- تحميل الخط Amiri محليًا ---
-                    const fontUrl = 'assets/fonts/Amiri-Regular.ttf';
-                    const response = await fetch(fontUrl);
-
-                    if (!response.ok) {
-                        throw new Error('فشل تحميل ملف الخط من المسار المحلي.');
-                    }
-
-                    const fontBlob = await response.blob();
-                    const fontBase64 = await new Promise((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(fontBlob);
-                    });
-
-                    // --- إعداد jsPDF واستخدام الخط ---
-                    const { jsPDF } = window.jspdf;
-                    const doc = new jsPDF();
-
-                    doc.addFileToVFS("Amiri-Regular.ttf", fontBase64);
-                    doc.addFont("Amiri-Regular.ttf", "Amiri", "normal");
-                    doc.setFont("Amiri");
-                    doc.setR2L(true); // تأكيد اتجاه النص من اليمين لليسار
-
-                    // عنوان التقرير
-                    doc.setFontSize(22);
-                    doc.text("تقرير مالي", 105, 20, { align: "center" });
-                    doc.setFontSize(12);
-                    doc.text(`العملة: ${activeCurrency}`, 200, 30, { align: "right" });
-                    doc.text(`الفترة من: ${startDate} إلى: ${endDate}`, 200, 37, { align: "right" });
-
+                    // إعداد البيانات للجدول
                     const tableData = filteredTxs.map(tx => {
                         const category = getCategoryById(tx.category);
                         const account = getAccountById(tx.accountId);
@@ -2475,34 +2445,48 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                         ];
                     });
 
-                    // --- إعداد الجدول ---
-                    doc.autoTable({
-                        startY: 45,
-                        head: [['الوصف', 'المبلغ', 'الحساب', 'الفئة', 'التاريخ']],
-                        body: tableData,
-                        theme: 'grid',
+                    // تعريف التقرير باستخدام pdfmake
+                    var docDefinition = {
+                        content: [
+                            { text: 'تقرير مالي', style: 'header' },
+                            { text: `العملة: ${activeCurrency}`, style: 'subheader' },
+                            { text: `الفترة من: ${startDate} إلى: ${endDate}`, style: 'subheader' },
+
+                            {
+                                style: 'tableExample',
+                                table: {
+                                    body: [
+                                        ['الوصف', 'المبلغ', 'الحساب', 'الفئة', 'التاريخ'],
+                                        ...tableData // إضافة البيانات من الفلاتر
+                                    ]
+                                }
+                            }
+                        ],
                         styles: {
-                            font: 'Amiri',
-                            halign: 'right', // محاذاة النص من اليمين
-                            cellPadding: 5 // إضافة مسافة للتنسيق
+                            header: {
+                                fontSize: 18,
+                                bold: true,
+                                alignment: 'center',
+                                margin: [0, 0, 0, 10]
+                            },
+                            subheader: {
+                                fontSize: 12,
+                                alignment: 'right'
+                            },
+                            tableExample: {
+                                margin: [0, 5, 0, 15]
+                            }
                         },
-                        headStyles: {
-                            halign: 'center',
-                            fillColor: [41, 128, 185],
-                            textColor: 255,
-                            fontStyle: 'bold'
-                        },
-                        columnStyles: {
-                            0: { halign: 'right' },
-                            1: { halign: 'center' },
-                            2: { halign: 'right' },
-                            3: { halign: 'right' },
-                            4: { halign: 'center' }
+                        defaultStyle: {
+                            font: 'Amiri',  // خط عربي (يمكنك استخدام خط آخر هنا)
+                            alignment: 'right', // الكتابة من اليمين لليسار
                         }
-                    });
+                    };
+
+                    // إنشاء وتحميل التقرير بصيغة PDF
+                    pdfMake.createPdf(docDefinition).download(`report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
 
                     Swal.close();
-                    doc.save(`report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
 
                 } catch (error) {
                     console.error("PDF Generation Error:", error);
@@ -2513,6 +2497,7 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     });
                 }
             }
+
 
 
 
