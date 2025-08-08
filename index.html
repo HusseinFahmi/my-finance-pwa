@@ -2399,26 +2399,6 @@
 AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAoT1MvMnRLy58AAAIkAAAAYGNtYXDZDoEQAAACUAAAAAhnbHlmP9Ig2AAAApwAAACRtYXhwAT8BHAAAAsgAAAAgbmFtZWRyyfEAAAMUAAABp3Bvc3Szh2E3AAAFQAAAACBwcmVwAAUAAAAABAAAAAABAAAAAQAAAY4AzAABAAAAAQAAAAAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAEAAEAAADzDwPiAAA=
   `;
 
-            if (typeof pdfMake === 'undefined') {
-                document.body.innerHTML += '<div style="color:red">خطأ: مكتبة pdfMake غير محملة!</div>';
-            } else {
-                pdfMake.fonts = {
-                    Amiri: {
-                        normal: 'Amiri-Regular.ttf',
-                        bold: 'Amiri-Bold.ttf',
-                        italics: 'Amiri-Italic.ttf',
-                        bolditalics: 'Amiri-BoldItalic.ttf'
-                    }
-                };
-
-                // فقط للعرض على الواجهة
-                const vfsKeys = Object.keys(pdfMake.vfs || {});
-                document.body.innerHTML += `<div style="background:#eef;padding:10px;margin:10px 0">
-        تم تحميل الخطوط المخصصة. عدد الملفات في vfs: ${vfsKeys.length}
-    </div>`;
-            }
-
-
             async function handlePrintReport() {
                 const startDate = document.getElementById('report-start-date').value;
                 const endDate = document.getElementById('report-end-date').value;
