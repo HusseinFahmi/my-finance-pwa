@@ -2401,6 +2401,83 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
 
 
             async function handlePrintReport() {
+                // ================== [مُحسَّن] دالة معالجة النص العربي ثنائي الاتجاه ==================
+                // هذه الدالة تعالج النص المختلط (عربي وأرقام/إنجليزي) لضمان عرضه بشكل صحيح.
+                const processBidiText = (text) => {
+                    if (typeof text !== 'string') {
+                        text = String(text);
+                    }
+                    const arabicRegex = /[\u0600-\u06FF]/;
+                    if (!arabicRegex.test(text)) {
+                        return text; // It's not Arabic, return as is.
+                    }
+
+                    // تفكيك النص إلى أجزاء عربية وغير عربية
+                    const parts = text.match(/[\u0600-\u06FF\s.,!?"'()]+|[a-zA-Z0-9\s.,!?"'():-]+/g) || [];
+
+                    // عكس ترتيب الأجزاء لعرضها بالشكل الصحيح في بيئة RTL
+                    return parts.reverse().map(part => {
+                        // لا تعكس الأحرف العربية، فقط الكلمات الإنجليزية/الأرقام إذا كانت منفصلة
+                        if (!arabicRegex.test(part) && part.trim().length > 1) {
+                            // قد لا نحتاج لعكس الحروف داخل الكلمة، pdfmake يعالجها أحياناً
+                            // return part.split('').reverse().join('');
+                            return part;
+                        }
+                        return part;
+                    }).join('');
+                };
+                // ======================================================================================
+
+                // دالة مساعدة لإنشاء صور المخططات البيانية
+                const generateChartImage = async (type, data, currency) => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = 400;
+                    tempCanvas.height = 250;
+
+                    if (Object.keys(data).length === 0) return null;
+
+                    new Chart(tempCanvas.getContext('2d'), {
+                        type: 'pie',
+                        data: {
+                            labels: Object.keys(data).map(processBidiText),
+                            datasets: [{
+                                data: Object.values(data),
+                                backgroundColor: ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#34495e', '#1abc9c', '#e67e22'],
+                                borderColor: '#ffffff',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: false,
+                            animation: { duration: 0 }, // Disable animation for instant rendering
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: {
+                                        font: { family: 'Amiri', size: 10 },
+                                        boxWidth: 12,
+                                        padding: 15
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => {
+                                            const label = context.label || '';
+                                            const value = context.raw || 0;
+                                            const total = context.chart.getDatasetMeta(0).total;
+                                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                            return `${label}: ${value.toLocaleString()} (${percentage})`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    return tempCanvas.toDataURL('image/png');
+                };
+
+
                 pdfMake.fonts = {
                     Amiri: {
                         normal: 'Amiri-Regular.ttf',
@@ -2420,14 +2497,14 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
 
                 Swal.fire({
                     title: 'جاري إعداد التقرير...',
-                    text: 'قد يستغرق الأمر بضع ثوانٍ.',
+                    text: 'قد يستغرق الأمر بضع ثوانٍ، خاصة عند إنشاء المخططات.',
                     allowOutsideClick: false,
                     didOpen: () => { Swal.showLoading(); }
                 });
 
                 try {
-                    // ----- فلترة وترتيب المعاملات -----
-                    const filteredTxs = state.transactions
+                    // فلترة العمليات للفترة المحددة
+                    const txsInPeriod = state.transactions
                         .filter(tx => {
                             const account = getAccountById(tx.accountId);
                             return account && account.currency === activeCurrency &&
@@ -2435,79 +2512,184 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                         })
                         .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                    if (filteredTxs.length === 0) {
+                    if (txsInPeriod.length === 0) {
                         Swal.close();
                         return Swal.fire('لا توجد بيانات', `لا توجد عمليات بالعملة (${activeCurrency}) في الفترة المحددة.`, 'info');
                     }
 
-                    // ----- تأكد من تحميل الخطوط -----
-                    if (!pdfMake || !pdfMake.vfs || !pdfMake.vfs['Amiri-Regular.ttf']) {
-                        Swal.close();
-                        console.error('خط Amiri غير محمّل في pdfMake.vfs. keys:', Object.keys(pdfMake.vfs || {}));
-                        return Swal.fire('خطأ', 'لم يتم تحميل خطوط Amiri. تأكد من تضمين custom_vfs_fonts.js واسماء الملفات.', 'error');
-                    }
+                    // حساب الملخصات والأرصدة
+                    let totalIncome = 0, totalExpense = 0, largestIncome = 0, largestExpense = 0;
+                    const incomeByCategory = {}, expenseByCategory = {};
 
-                    // ----- إعداد بيانات الجدول (نستخدم objects داخل الخلايا لضبط المحاذاة) -----
-                    const tableData = filteredTxs.map(tx => {
+                    txsInPeriod.forEach(tx => {
+                        const category = getCategoryById(tx.category);
+                        const categoryName = `${category.icon || ''} ${category.name}`;
+                        if (tx.type === 'income') {
+                            totalIncome += tx.amount;
+                            if (tx.amount > largestIncome) largestIncome = tx.amount;
+                            incomeByCategory[categoryName] = (incomeByCategory[categoryName] || 0) + tx.amount;
+                        } else {
+                            totalExpense += tx.amount;
+                            if (tx.amount > largestExpense) largestExpense = tx.amount;
+                            expenseByCategory[categoryName] = (expenseByCategory[categoryName] || 0) + tx.amount;
+                        }
+                    });
+
+                    const txsBeforePeriod = state.transactions.filter(tx => {
+                        const account = getAccountById(tx.accountId);
+                        return account && account.currency === activeCurrency && dayjs(tx.date).isBefore(startDate);
+                    });
+
+                    const openingBalance = txsBeforePeriod.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0);
+                    const netTotal = totalIncome - totalExpense;
+                    const closingBalance = openingBalance + netTotal;
+
+                    const formatPdfCurrency = (amount) => amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+                    // إعداد بيانات المخططات البيانية
+                    const expenseChartImage = await generateChartImage('expense', expenseByCategory, activeCurrency);
+                    const incomeChartImage = await generateChartImage('income', incomeByCategory, activeCurrency);
+
+                    // إعداد بيانات الجداول
+                    const mainTableData = txsInPeriod.map(tx => {
                         const category = getCategoryById(tx.category);
                         const account = getAccountById(tx.accountId);
                         return [
-                            { text: tx.notes || "-", alignment: 'right' },
-                            { text: `${tx.type === 'income' ? '+' : '-'} ${tx.amount.toLocaleString()}`, alignment: 'center' },
-                            { text: account?.name || "", alignment: 'right' },
-                            { text: `${category?.icon || ''} ${category?.name || ''}`, alignment: 'right' },
-                            { text: tx.date, alignment: 'center' }
+                            { text: processBidiText(tx.notes || "-"), alignment: 'right' },
+                            { text: `${tx.type === 'income' ? '+' : '-'} ${formatPdfCurrency(tx.amount)}`, alignment: 'center', noWrap: true, color: tx.type === 'income' ? 'green' : 'red' },
+                            { text: processBidiText(account?.name || ""), alignment: 'right' },
+                            { text: processBidiText(`${category?.icon || ''} ${category?.name || ''}`), alignment: 'right' },
+                            { text: tx.date, alignment: 'center', noWrap: true }
                         ];
                     });
 
-                    // ----- تعريف تقرير pdfmake مع تفعيل الخط Amiri -----
                     var docDefinition = {
                         content: [
-                            { text: 'تقرير مالي', style: 'header' },
-                            { text: `العملة: ${activeCurrency}`, style: 'subheader' },
-                            { text: `الفترة من: ${startDate} إلى: ${endDate}`, style: 'subheader' },
+                            // 1. العنوان الرئيسي
+                            { text: processBidiText('تقرير مالي شامل'), style: 'header' },
+                            { text: processBidiText(`الفترة من: ${startDate} إلى: ${endDate}`), style: 'subheader' },
+                            { text: processBidiText(`العملة: ${activeCurrency}`), style: 'subheader', margin: [0, 0, 0, 20] },
+
+                            // 2. ملخص الأرصدة
+                            { text: processBidiText('ملخص الأرصدة والتدفقات النقدية'), style: 'sectionHeader' },
                             {
-                                style: 'tableExample',
+                                style: 'summaryBox',
                                 table: {
-                                    headerRows: 1,
-                                    widths: ['*', 'auto', '*', '*', 'auto'],
+                                    widths: ['*', '*', '*', '*'],
                                     body: [
                                         [
-                                            { text: 'الوصف', style: 'tableHeader' },
-                                            { text: 'المبلغ', style: 'tableHeader' },
-                                            { text: 'الحساب', style: 'tableHeader' },
-                                            { text: 'الفئة', style: 'tableHeader' },
-                                            { text: 'التاريخ', style: 'tableHeader' }
+                                            { text: processBidiText('الرصيد الختامي'), style: 'summaryLabel', bold: true },
+                                            { text: processBidiText('صافي التدفق'), style: 'summaryLabel' },
+                                            { text: processBidiText('إجمالي الدخل'), style: 'summaryLabel' },
+                                            { text: processBidiText('الرصيد الافتتاحي'), style: 'summaryLabel' }
                                         ],
-                                        ...tableData
+                                        [
+                                            { text: formatPdfCurrency(closingBalance), style: ['summaryValue', 'closingBalance'] },
+                                            { text: formatPdfCurrency(netTotal), style: ['summaryValue', netTotal >= 0 ? 'profit' : 'loss'] },
+                                            { text: formatPdfCurrency(totalIncome), style: ['summaryValue', 'profit'] },
+                                            { text: formatPdfCurrency(openingBalance), style: ['summaryValue', 'openingBalance'] }
+                                        ],
+                                        [
+                                            {},
+                                            { text: formatPdfCurrency(totalExpense), style: ['summaryValueSmall', 'loss'] },
+                                            {},
+                                            {}
+                                        ],
+                                        [
+                                            {},
+                                            { text: processBidiText('إجمالي المصروفات'), style: 'summaryLabelSmall' },
+                                            {},
+                                            {}
+                                        ]
                                     ]
-                                }
+                                },
+                                layout: 'noBorders'
+                            },
+
+                            // 3. المخططات البيانية
+                            {
+                                columns: [
+                                    (incomeChartImage ? {
+                                        width: '*',
+                                        stack: [
+                                            { text: processBidiText('تحليل مصادر الدخل'), style: 'sectionHeader', alignment: 'center' },
+                                            { image: incomeChartImage, width: 250, alignment: 'center' }
+                                        ]
+                                    } : { text: '' }),
+                                    (expenseChartImage ? {
+                                        width: '*',
+                                        stack: [
+                                            { text: processBidiText('تحليل فئات المصروفات'), style: 'sectionHeader', alignment: 'center' },
+                                            { image: expenseChartImage, width: 250, alignment: 'center' }
+                                        ]
+                                    } : { text: '' })
+                                ],
+                                margin: [0, 10, 0, 10]
+                            },
+
+                            // 4. الجدول الرئيسي المفصل
+                            { text: processBidiText('سجل العمليات المفصل'), style: 'sectionHeader', margin: [0, 20, 0, 5] },
+                            {
+                                table: {
+                                    headerRows: 1,
+                                    widths: ['*', 'auto', 'auto', 'auto', 'auto'],
+                                    body: [
+                                        [{ text: processBidiText('الوصف'), style: 'tableHeader' }, { text: processBidiText('المبلغ'), style: 'tableHeader' }, { text: processBidiText('الحساب'), style: 'tableHeader' }, { text: processBidiText('الفئة'), style: 'tableHeader' }, { text: processBidiText('التاريخ'), style: 'tableHeader' }],
+                                        ...mainTableData
+                                    ]
+                                },
+                                layout: 'lightHorizontalLines'
                             }
                         ],
+
+                        header: function (currentPage, pageCount, pageSize) {
+                            return {
+                                columns: [
+                                    { text: processBidiText('مديري المالي الذكي'), alignment: 'left', style: 'footer' },
+                                    { text: `صفحة ${currentPage.toString()} من ${pageCount}`, alignment: 'right', style: 'footer' }
+                                ],
+                                margin: [40, 10]
+                            };
+                        },
+                        footer: {
+                            columns: [
+                                { text: `Generated on: ${dayjs().format('YYYY-MM-DD HH:mm')}`, alignment: 'center', style: 'footer' }
+                            ],
+                            margin: [40, 0]
+                        },
+
                         styles: {
-                            header: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
-                            subheader: { fontSize: 12, alignment: 'right' },
-                            tableHeader: { bold: true, alignment: 'center' },
-                            tableExample: { margin: [0, 5, 0, 15] }
+                            header: { fontSize: 22, bold: true, alignment: 'center', margin: [0, 0, 0, 5], color: '#2c3e50' },
+                            subheader: { fontSize: 12, alignment: 'center', color: '#7f8c8d' },
+                            sectionHeader: { fontSize: 16, bold: true, margin: [0, 15, 0, 5], color: '#34495e' },
+                            tableHeader: { bold: true, alignment: 'center', fillColor: '#3498db', color: 'white', fontSize: 11 },
+                            footer: { fontSize: 8, margin: [0, 5, 0, 5], color: 'gray' },
+                            summaryBox: { margin: [0, 5, 0, 15] },
+                            summaryLabel: { bold: true, alignment: 'center', color: '#7f8c8d', fontSize: 10 },
+                            summaryLabelSmall: { bold: false, alignment: 'center', color: '#95a5a6', fontSize: 9 },
+                            summaryValue: { fontSize: 18, bold: true, alignment: 'center' },
+                            summaryValueSmall: { fontSize: 12, bold: true, alignment: 'center' },
+                            profit: { color: '#27ae60' }, // أخضر
+                            loss: { color: '#c0392b' }, // أحمر
+                            openingBalance: { color: '#7f8c8d' },
+                            closingBalance: { color: '#2c3e50', bold: true }
                         },
                         defaultStyle: {
-                            font: 'Amiri',   // الاسم الذي سجلناه في pdfMake.fonts
-                            alignment: 'right'
+                            font: 'Amiri',
+                            alignment: 'right',
+                            fontSize: 10
                         }
                     };
 
-                    // ----- أنشئ وحمّل الـ PDF -----
-                    pdfMake.createPdf(docDefinition).download(`report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
-
+                    pdfMake.createPdf(docDefinition).download(`Financial-Report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
                     Swal.close();
+
                 } catch (error) {
                     console.error("PDF Generation Error:", error);
+                    Swal.close();
                     Swal.fire({ icon: 'error', title: 'خطأ في الطباعة', text: error.message || 'حدث خطأ غير متوقع أثناء إنشاء الملف.' });
                 }
             }
-
-
-
 
 
 
