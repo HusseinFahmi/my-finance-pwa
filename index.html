@@ -2399,7 +2399,17 @@
 AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAoT1MvMnRLy58AAAIkAAAAYGNtYXDZDoEQAAACUAAAAAhnbHlmP9Ig2AAAApwAAACRtYXhwAT8BHAAAAsgAAAAgbmFtZWRyyfEAAAMUAAABp3Bvc3Szh2E3AAAFQAAAACBwcmVwAAUAAAAABAAAAAABAAAAAQAAAY4AzAABAAAAAQAAAAAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAEAAEAAADzDwPiAAA=
   `;
 
+
             async function handlePrintReport() {
+                pdfMake.fonts = {
+                    Amiri: {
+                        normal: 'Amiri-Regular.ttf',
+                        bold: 'Amiri-Bold.ttf',
+                        italics: 'Amiri-Italic.ttf',
+                        bolditalics: 'Amiri-BoldItalic.ttf'
+                    }
+                };
+
                 const startDate = document.getElementById('report-start-date').value;
                 const endDate = document.getElementById('report-end-date').value;
                 const activeCurrency = document.querySelector('.report-currency-tab.bg-blue-500')?.dataset.currency;
