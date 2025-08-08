@@ -36,7 +36,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="custom_vfs_fonts.js"></script>
 
 
 
@@ -2399,6 +2399,25 @@
 AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAoT1MvMnRLy58AAAIkAAAAYGNtYXDZDoEQAAACUAAAAAhnbHlmP9Ig2AAAApwAAACRtYXhwAT8BHAAAAsgAAAAgbmFtZWRyyfEAAAMUAAABp3Bvc3Szh2E3AAAFQAAAACBwcmVwAAUAAAAABAAAAAABAAAAAQAAAY4AzAABAAAAAQAAAAAAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAEAAEAAADzDwPiAAA=
   `;
 
+            if (typeof pdfMake === 'undefined') {
+                document.body.innerHTML += '<div style="color:red">خطأ: مكتبة pdfMake غير محملة!</div>';
+            } else {
+                pdfMake.fonts = {
+                    Amiri: {
+                        normal: 'Amiri-Regular.ttf',
+                        bold: 'Amiri-Bold.ttf',
+                        italics: 'Amiri-Italic.ttf',
+                        bolditalics: 'Amiri-BoldItalic.ttf'
+                    }
+                };
+
+                // فقط للعرض على الواجهة
+                const vfsKeys = Object.keys(pdfMake.vfs || {});
+                document.body.innerHTML += `<div style="background:#eef;padding:10px;margin:10px 0">
+        تم تحميل الخطوط المخصصة. عدد الملفات في vfs: ${vfsKeys.length}
+    </div>`;
+            }
+
 
             async function handlePrintReport() {
                 const startDate = document.getElementById('report-start-date').value;
@@ -2413,12 +2432,11 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     title: 'جاري إعداد التقرير...',
                     text: 'قد يستغرق الأمر بضع ثوانٍ.',
                     allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
+                    didOpen: () => { Swal.showLoading(); }
                 });
 
                 try {
+                    // ----- فلترة وترتيب المعاملات -----
                     const filteredTxs = state.transactions
                         .filter(tx => {
                             const account = getAccountById(tx.accountId);
@@ -2432,71 +2450,72 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                         return Swal.fire('لا توجد بيانات', `لا توجد عمليات بالعملة (${activeCurrency}) في الفترة المحددة.`, 'info');
                     }
 
-                    // إعداد البيانات للجدول
+                    // ----- تأكد من تحميل الخطوط -----
+                    if (!pdfMake || !pdfMake.vfs || !pdfMake.vfs['Amiri-Regular.ttf']) {
+                        Swal.close();
+                        console.error('خط Amiri غير محمّل في pdfMake.vfs. keys:', Object.keys(pdfMake.vfs || {}));
+                        return Swal.fire('خطأ', 'لم يتم تحميل خطوط Amiri. تأكد من تضمين custom_vfs_fonts.js واسماء الملفات.', 'error');
+                    }
+
+                    // ----- إعداد بيانات الجدول (نستخدم objects داخل الخلايا لضبط المحاذاة) -----
                     const tableData = filteredTxs.map(tx => {
                         const category = getCategoryById(tx.category);
                         const account = getAccountById(tx.accountId);
                         return [
-                            tx.notes || "-",
-                            `${tx.type === 'income' ? '+' : '-'} ${tx.amount.toLocaleString()}`,
-                            account?.name || "",
-                            `${category?.icon || ''} ${category?.name || ''}`,
-                            tx.date
+                            { text: tx.notes || "-", alignment: 'right' },
+                            { text: `${tx.type === 'income' ? '+' : '-'} ${tx.amount.toLocaleString()}`, alignment: 'center' },
+                            { text: account?.name || "", alignment: 'right' },
+                            { text: `${category?.icon || ''} ${category?.name || ''}`, alignment: 'right' },
+                            { text: tx.date, alignment: 'center' }
                         ];
                     });
 
-                    // تعريف التقرير باستخدام pdfmake
+                    // ----- تعريف تقرير pdfmake مع تفعيل الخط Amiri -----
                     var docDefinition = {
                         content: [
                             { text: 'تقرير مالي', style: 'header' },
                             { text: `العملة: ${activeCurrency}`, style: 'subheader' },
                             { text: `الفترة من: ${startDate} إلى: ${endDate}`, style: 'subheader' },
-
                             {
                                 style: 'tableExample',
                                 table: {
+                                    headerRows: 1,
+                                    widths: ['*', 'auto', '*', '*', 'auto'],
                                     body: [
-                                        ['الوصف', 'المبلغ', 'الحساب', 'الفئة', 'التاريخ'],
-                                        ...tableData // إضافة البيانات من الفلاتر
+                                        [
+                                            { text: 'الوصف', style: 'tableHeader' },
+                                            { text: 'المبلغ', style: 'tableHeader' },
+                                            { text: 'الحساب', style: 'tableHeader' },
+                                            { text: 'الفئة', style: 'tableHeader' },
+                                            { text: 'التاريخ', style: 'tableHeader' }
+                                        ],
+                                        ...tableData
                                     ]
                                 }
                             }
                         ],
                         styles: {
-                            header: {
-                                fontSize: 18,
-                                bold: true,
-                                alignment: 'center',
-                                margin: [0, 0, 0, 10]
-                            },
-                            subheader: {
-                                fontSize: 12,
-                                alignment: 'right'
-                            },
-                            tableExample: {
-                                margin: [0, 5, 0, 15]
-                            }
+                            header: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
+                            subheader: { fontSize: 12, alignment: 'right' },
+                            tableHeader: { bold: true, alignment: 'center' },
+                            tableExample: { margin: [0, 5, 0, 15] }
                         },
                         defaultStyle: {
-                            font: 'Amiri',  // خط عربي (يمكنك استخدام خط آخر هنا)
-                            alignment: 'right', // الكتابة من اليمين لليسار
+                            font: 'Amiri',   // الاسم الذي سجلناه في pdfMake.fonts
+                            alignment: 'right'
                         }
                     };
 
-                    // إنشاء وتحميل التقرير بصيغة PDF
+                    // ----- أنشئ وحمّل الـ PDF -----
                     pdfMake.createPdf(docDefinition).download(`report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
 
                     Swal.close();
-
                 } catch (error) {
                     console.error("PDF Generation Error:", error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'خطأ في الطباعة',
-                        text: error.message || 'حدث خطأ غير متوقع أثناء إنشاء الملف.'
-                    });
+                    Swal.fire({ icon: 'error', title: 'خطأ في الطباعة', text: error.message || 'حدث خطأ غير متوقع أثناء إنشاء الملف.' });
                 }
             }
+
 
 
 
