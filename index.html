@@ -2400,329 +2400,348 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
   `;
 
 
-           async function handlePrintReport() {
+            async function handlePrintReport() {
 
-    // ================== [جديد ومُحسَّن] دوال مساعدة للـ PDF ==================
+                // ================== [جديد ومُحسَّن] دوال مساعدة للـ PDF ==================
 
-    // 1. دالة لمعالجة اتجاه النص العربي (تعكس ترتيب الكلمات في الجملة)
-    const processBidiText = (text) => {
-        if (typeof text !== 'string') text = String(text);
-        const hasArabic = /[\u0600-\u06FF]/.test(text);
-        if (!hasArabic) return text;
-        // هذه الطريقة البسيطة فعالة مع العناوين والعبارات القصيرة
-        return text.split(' ').reverse().join(' ');
-    };
+                // 1. دالة لمعالجة اتجاه النص العربي (تعكس ترتيب الكلمات في الجملة)
+                const processBidiText = (text) => {
+                    if (typeof text !== 'string') text = String(text);
+                    const hasArabic = /[\u0600-\u06FF]/.test(text);
+                    if (!hasArabic) return text;
+                    // هذه الطريقة البسيطة فعالة مع العناوين والعبارات القصيرة
+                    return text.split(' ').reverse().join(' ');
+                };
 
-    // 2. دالة لتنسيق الأرقام لضمان عرضها بالأرقام القياسية (1,2,3)
-    const formatPdfCurrency = (amount) => {
-        if (typeof amount !== 'number') return '0';
-        return amount.toLocaleString('en-US', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
-        });
-    };
-    // =======================================================================
+                // 2. دالة لتنسيق الأرقام لضمان عرضها بالأرقام القياسية (1,2,3)
+                const formatPdfCurrency = (amount) => {
+                    if (typeof amount !== 'number') return '0';
+                    return amount.toLocaleString('en-US', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                    });
+                };
+                // =======================================================================
 
 
-    // دالة مساعدة لإنشاء صور المخططات البيانية مع معالجة النص
-    const generateChartImage = async (data, currency, type) => {
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = 400;
-        tempCanvas.height = 250;
+                // دالة مساعدة لإنشاء صور المخططات البيانية مع معالجة النص
+                const generateChartImage = async (data, currency, type) => {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = 400;
+                    tempCanvas.height = 250;
 
-        if (Object.keys(data).length === 0) return null;
+                    if (Object.keys(data).length === 0) return null;
 
-        const processedLabels = Object.keys(data).map(label => processBidiText(label));
+                    const processedLabels = Object.keys(data).map(label => processBidiText(label));
 
-        new Chart(tempCanvas.getContext('2d'), {
-            type: 'pie',
-            data: {
-                labels: processedLabels,
-                datasets: [{
-                    data: Object.values(data),
-                    backgroundColor: type === 'income' ? ['#2ecc71', '#27ae60', '#1abc9c', '#16a085'] : ['#e74c3c', '#c0392b', '#d35400', '#f39c12', '#e67e22'],
-                    borderColor: '#ffffff',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: false,
-                animation: { duration: 0 },
-                plugins: {
-                    legend: {
-                        position: 'right',
-                        labels: {
-                            font: { family: 'Amiri', size: 11 },
-                            boxWidth: 12,
-                            padding: 15,
+                    new Chart(tempCanvas.getContext('2d'), {
+                        type: 'pie',
+                        data: {
+                            labels: processedLabels,
+                            datasets: [{
+                                data: Object.values(data),
+                                backgroundColor: type === 'income' ? ['#2ecc71', '#27ae60', '#1abc9c', '#16a085'] : ['#e74c3c', '#c0392b', '#d35400', '#f39c12', '#e67e22'],
+                                borderColor: '#ffffff',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: false,
+                            animation: { duration: 0 },
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: {
+                                        font: { family: 'Amiri', size: 11 },
+                                        boxWidth: 12,
+                                        padding: 15,
+                                        color: '#34495e'
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (context) => {
+                                            let label = context.label || '';
+                                            let value = context.raw || 0;
+                                            return ` ${label}: ${formatPdfCurrency(value)} ${currency}`;
+                                        }
+                                    },
+                                    bodyFont: { family: 'Amiri' },
+                                    titleFont: { family: 'Amiri' }
+                                }
+                            }
+                        }
+                    });
+
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    return tempCanvas.toDataURL('image/png');
+                };
+
+                pdfMake.fonts = {
+                    Amiri: {
+                        normal: 'Amiri-Regular.ttf',
+                        bold: 'Amiri-Bold.ttf',
+                        italics: 'Amiri-Italic.ttf',
+                        bolditalics: 'Amiri-BoldItalic.ttf'
+                    }
+                };
+
+                const startDate = document.getElementById('report-start-date').value;
+                const endDate = document.getElementById('report-end-date').value;
+                const activeCurrency = document.querySelector('.report-currency-tab.bg-blue-500')?.dataset.currency;
+
+                if (!startDate || !endDate) {
+                    return Swal.fire('خطأ', 'الرجاء تحديد تاريخ البداية والنهاية.', 'error');
+                }
+
+                Swal.fire({
+                    title: 'جاري إعداد التقرير الشامل...',
+                    text: 'قد يستغرق الأمر بضع ثوانٍ.',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                try {
+                    const txsInPeriod = state.transactions.filter(tx => {
+                        const account = getAccountById(tx.accountId);
+                        return account && account.currency === activeCurrency && dayjs(tx.date).isBetween(startDate, endDate, null, '[]');
+                    }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    if (txsInPeriod.length === 0) {
+                        Swal.close();
+                        return Swal.fire('لا توجد بيانات', `لا توجد عمليات بالعملة (${activeCurrency}) في الفترة المحددة.`, 'info');
+                    }
+
+                    // --- حسابات شاملة للتقرير ---
+                    let totalIncome = 0, totalExpense = 0, largestIncome = 0, largestExpense = 0, incomeCount = 0, expenseCount = 0;
+                    const incomeByCategory = {}, expenseByCategory = {};
+
+                    txsInPeriod.forEach(tx => {
+                        const category = getCategoryById(tx.category);
+                        const categoryName = `${category.icon || ''} ${category.name}`;
+                        if (tx.type === 'income') {
+                            totalIncome += tx.amount;
+                            incomeCount++;
+                            if (tx.amount > largestIncome) largestIncome = tx.amount;
+                            incomeByCategory[categoryName] = (incomeByCategory[categoryName] || 0) + tx.amount;
+                        } else {
+                            totalExpense += tx.amount;
+                            expenseCount++;
+                            if (tx.amount > largestExpense) largestExpense = tx.amount;
+                            expenseByCategory[categoryName] = (expenseByCategory[categoryName] || 0) + tx.amount;
+                        }
+                    });
+
+                    const txsBeforePeriod = state.transactions.filter(tx => {
+                        const account = getAccountById(tx.accountId);
+                        return account && account.currency === activeCurrency && dayjs(tx.date).isBefore(startDate);
+                    });
+
+                    const openingBalance = txsBeforePeriod.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0);
+                    const netFlow = totalIncome - totalExpense;
+                    const closingBalance = openingBalance + netFlow;
+
+                    const debtsInPeriod = state.debts.filter(d => {
+                        const account = getAccountById(d.accountId);
+                        return account && account.currency === activeCurrency && dayjs(d.date).isBetween(startDate, endDate, null, '[]');
+                    });
+                    const newLoansGiven = debtsInPeriod.filter(d => d.type === 'lent').reduce((sum, d) => sum + d.originalAmount, 0);
+                    const newDebtsTaken = debtsInPeriod.filter(d => d.type === 'borrowed').reduce((sum, d) => sum + d.originalAmount, 0);
+
+                    const currencyBudgets = state.budgets[activeCurrency] || {};
+                    const budgetVsActual = Object.entries(currencyBudgets).map(([catId, budgetAmount]) => {
+                        const category = getCategoryById(catId);
+                        const actualSpent = txsInPeriod
+                            .filter(tx => tx.category === catId && tx.type === 'expense')
+                            .reduce((sum, tx) => sum + tx.amount, 0);
+                        const variance = budgetAmount - actualSpent;
+                        return {
+                            categoryName: `${category.icon} ${category.name}`,
+                            budget: budgetAmount,
+                            actual: actualSpent,
+                            variance: variance
+                        };
+                    }).filter(item => item.budget > 0 || item.actual > 0);
+
+                    const expenseChartImage = await generateChartImage(expenseByCategory, activeCurrency, 'expense');
+                    const incomeChartImage = await generateChartImage(incomeByCategory, activeCurrency, 'income');
+
+                    const mainTableData = txsInPeriod.map(tx => {
+                        const category = getCategoryById(tx.category);
+                        const account = getAccountById(tx.accountId);
+                        const typeLabel = tx.type === 'income' ? 'دخل' : tx.type === 'expense' ? 'مصروف' : 'تحويل';
+
+                        return [
+                            { text: processBidiText(tx.notes || "-"), alignment: 'right' },
+                            { text: `${tx.type === 'income' ? '+' : '-'} ${formatPdfCurrency(tx.amount)} ${activeCurrency}`, alignment: 'center', color: tx.type === 'income' ? '#27ae60' : '#c0392b', bold: true },
+                            { text: processBidiText(account?.name || ""), alignment: 'right' },
+                            { text: processBidiText(`${category?.icon || ''} ${category?.name || ''}`), alignment: 'right' },
+                            { text: processBidiText(typeLabel), alignment: 'center' },
+                            { text: tx.date, alignment: 'center' }
+                        ];
+                    });
+
+
+                    // --- تعريف بنية التقرير ---
+                    var docDefinition = {
+                        content: [
+                            { text: processBidiText('تقرير مالي شامل'), style: 'header' },
+                            { text: processBidiText(`عن الفترة من ${startDate} إلى ${endDate} - العملة: ${activeCurrency}`), style: 'subheader', margin: [0, 0, 0, 20] },
+
+                            {
+                                columns: [
+                                    {
+                                        width: '*',
+                                        stack: [
+                                            { text: processBidiText('الملخص المالي'), style: 'sectionHeader' },
+                                            {
+                                                style: 'summaryCard',
+                                                table: {
+                                                    widths: ['*', '*'],
+                                                    body: [
+                                                        [{ text: formatPdfCurrency(openingBalance), style: 'summaryValue' }, { text: processBidiText('الرصيد الافتتاحي'), style: 'summaryLabel' }],
+                                                        [{ text: formatPdfCurrency(totalIncome), style: ['summaryValue', 'profit'] }, { text: processBidiText('إجمالي الدخل'), style: 'summaryLabel' }],
+                                                        [{ text: formatPdfCurrency(totalExpense), style: ['summaryValue', 'loss'] }, { text: processBidiText('إجمالي المصروفات'), style: 'summaryLabel' }],
+                                                        [{ text: formatPdfCurrency(netFlow), style: ['summaryValue', netFlow >= 0 ? 'profit' : 'loss'] }, { text: processBidiText('صافي التدفق'), style: 'summaryLabel' }],
+                                                        [{ text: formatPdfCurrency(closingBalance), style: ['summaryValue', 'closingBalance'] }, { text: processBidiText('الرصيد الختامي'), style: 'summaryLabel', bold: true }]
+                                                    ]
+                                                }, layout: 'noBorders'
+                                            },
+
+                                            { text: processBidiText('مؤشرات الأداء'), style: 'sectionHeader', margin: [0, 15, 0, 5] },
+                                            {
+                                                style: 'summaryCard',
+                                                table: {
+                                                    widths: ['*', '*'],
+                                                    body: [
+                                                        [{ text: processBidiText(`${incomeCount} عملية`), style: 'summaryValueSmall' }, { text: processBidiText('عدد عمليات الدخل'), style: 'summaryLabel' }],
+                                                        [{ text: processBidiText(`${expenseCount} عملية`), style: 'summaryValueSmall' }, { text: processBidiText('عدد عمليات المصروفات'), style: 'summaryLabel' }],
+                                                        [{ text: formatPdfCurrency(largestIncome), style: 'summaryValueSmall' }, { text: processBidiText('أكبر عملية دخل'), style: 'summaryLabel' }],
+                                                        [{ text: formatPdfCurrency(largestExpense), style: 'summaryValueSmall' }, { text: processBidiText('أكبر عملية مصروف'), style: 'summaryLabel' }]
+                                                    ]
+                                                }, layout: 'noBorders'
+                                            },
+
+                                            { text: processBidiText('ملخص الديون'), style: 'sectionHeader', margin: [0, 15, 0, 5] },
+                                            {
+                                                style: 'summaryCard',
+                                                table: {
+                                                    widths: ['*', '*'],
+                                                    body: [
+                                                        [{ text: formatPdfCurrency(newLoansGiven), style: ['summaryValueSmall', 'loss'] }, { text: processBidiText('سلف جديدة أعطيت'), style: 'summaryLabel' }],
+                                                        [{ text: formatPdfCurrency(newDebtsTaken), style: ['summaryValueSmall', 'profit'] }, { text: processBidiText('سلف جديدة أخذت'), style: 'summaryLabel' }]
+                                                    ]
+                                                }, layout: 'noBorders'
+                                            }
+                                        ]
+                                    },
+                                    { width: 20, text: '' },
+                                    {
+                                        width: '*',
+                                        stack: [
+                                            { text: processBidiText('تحليل المصروفات'), style: 'sectionHeader' },
+                                            expenseChartImage ? { image: expenseChartImage, width: 240, alignment: 'center' } : { text: processBidiText('لا توجد بيانات مصروفات'), style: 'placeholder' },
+
+                                            { text: processBidiText('تحليل مصادر الدخل'), style: 'sectionHeader', margin: [0, 20, 0, 5] },
+                                            incomeChartImage ? { image: incomeChartImage, width: 240, alignment: 'center' } : { text: processBidiText('لا يوجد بيانات دخل'), style: 'placeholder' }
+                                        ]
+                                    }
+                                ],
+                                margin: [0, 0, 0, 20]
+                            },
+
+                            (budgetVsActual.length > 0 ? [
+                                { text: processBidiText('مقارنة الميزانية بالإنفاق الفعلي'), style: 'sectionHeader', pageBreak: 'before' },
+                                {
+                                    table: {
+                                        headerRows: 1,
+                                        widths: ['auto', '*', '*', '*'],
+                                        body: [
+                                            [{ text: processBidiText('الفائض/العجز'), style: 'tableHeader' }, { text: processBidiText('الفعلي'), style: 'tableHeader' }, { text: processBidiText('الميزانية'), style: 'tableHeader' }, { text: processBidiText('الفئة'), style: 'tableHeader' }],
+                                            ...budgetVsActual.map(item => [
+                                                { text: formatPdfCurrency(item.variance), alignment: 'center', color: item.variance >= 0 ? '#27ae60' : '#c0392b' },
+                                                { text: formatPdfCurrency(item.actual), alignment: 'center' },
+                                                { text: formatPdfCurrency(item.budget), alignment: 'center' },
+                                                { text: item.categoryName, alignment: 'right' }
+                                            ])
+                                        ]
+                                    }, layout: 'lightHorizontalLines'
+                                }
+                            ] : { text: '' }),
+
+                            { text: processBidiText('سجل العمليات المفصل'), style: 'sectionHeader', pageBreak: 'before' },
+                            {
+                                table: {
+                                    headerRows: 1,
+                                    widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto'],
+                                    body: [
+                                        [
+                                            { text: processBidiText('الوصف'), style: 'tableHeader' },
+                                            { text: processBidiText('المبلغ'), style: 'tableHeader' },
+                                            { text: processBidiText('الحساب'), style: 'tableHeader' },
+                                            { text: processBidiText('الفئة'), style: 'tableHeader' },
+                                            { text: processBidiText('النوع'), style: 'tableHeader' },
+                                            { text: processBidiText('التاريخ'), style: 'tableHeader' }
+                                        ],
+                                        ...mainTableData
+                                    ]
+                                },
+                                layout: {
+                                    fillColor: (rowIndex, node, columnIndex) => {
+                                        if (rowIndex === 0) return '#34495e';
+                                        const isIncome = mainTableData[rowIndex - 1][1].text.includes('+');
+                                        const isExpense = mainTableData[rowIndex - 1][1].text.includes('-');
+                                        if (isIncome) return '#eafaf1';
+                                        if (isExpense) return '#fdecea';
+                                        return rowIndex % 2 === 0 ? '#f8f9f9' : null;
+                                    }
+                                }
+                            }
+
+                        ],
+
+                        header: (currentPage, pageCount) => ({
+                            text: processBidiText(`صفحة ${currentPage.toString()} من ${pageCount}`),
+                            alignment: 'right',
+                            style: 'footer'
+                        }),
+                        footer: {
+                            text: processBidiText(`تم إنشاء التقرير بواسطة "مديري المالي الذكي" بتاريخ ${dayjs().format('YYYY-MM-DD')}`),
+                            alignment: 'center',
+                            style: 'footer'
+                        },
+                        styles: {
+                            header: { fontSize: 24, bold: true, alignment: 'center', margin: [0, 0, 0, 5], color: '#2c3e50' },
+                            subheader: { fontSize: 12, alignment: 'center', color: '#7f8c8d' },
+                            sectionHeader: { fontSize: 16, bold: true, margin: [0, 15, 0, 5], color: '#2980b9' },
+                            tableHeader: { bold: true, alignment: 'center', fillColor: '#34495e', color: 'white', fontSize: 11 },
+                            footer: { fontSize: 8, margin: [40, 10], color: 'gray' },
+                            summaryCard: { margin: [0, 5, 0, 10], fillColor: '#f8f9f9', },
+                            summaryLabel: { alignment: 'right', bold: true, color: '#34495e', margin: [0, 2, 0, 2] },
+                            summaryValue: { fontSize: 15, bold: true, alignment: 'center', margin: [0, 2, 0, 2] },
+                            summaryValueSmall: { fontSize: 12, bold: false, alignment: 'center' },
+                            closingBalance: { color: '#2c3e50', bold: true, fontSize: 16 },
+                            profit: { color: '#27ae60' },
+                            loss: { color: '#c0392b' },
+                            placeholder: { alignment: 'center', color: '#95a5a6', margin: [0, 20] }
+                        },
+                        defaultStyle: {
+                            font: 'Amiri',
+                            alignment: 'right',
+                            fontSize: 10,
                             color: '#34495e'
                         }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (context) => {
-                                let label = context.label || '';
-                                let value = context.raw || 0;
-                                return ` ${label}: ${formatPdfCurrency(value)} ${currency}`;
-                            }
-                        },
-                        bodyFont: { family: 'Amiri' },
-                        titleFont: { family: 'Amiri' }
-                    }
+                    };
+
+                    pdfMake.createPdf(docDefinition).download(`Financial-Report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
+                    Swal.close();
+
+                } catch (error) {
+                    console.error("PDF Generation Error:", error);
+                    Swal.close();
+                    Swal.fire({ icon: 'error', title: 'خطأ في الطباعة', text: error.message || 'حدث خطأ غير متوقع أثناء إنشاء الملف.' });
                 }
             }
-        });
-
-        await new Promise(resolve => setTimeout(resolve, 50));
-        return tempCanvas.toDataURL('image/png');
-    };
-
-    pdfMake.fonts = {
-        Amiri: {
-            normal: 'Amiri-Regular.ttf',
-            bold: 'Amiri-Bold.ttf',
-            italics: 'Amiri-Italic.ttf',
-            bolditalics: 'Amiri-BoldItalic.ttf'
-        }
-    };
-
-    const startDate = document.getElementById('report-start-date').value;
-    const endDate = document.getElementById('report-end-date').value;
-    const activeCurrency = document.querySelector('.report-currency-tab.bg-blue-500')?.dataset.currency;
-
-    if (!startDate || !endDate) {
-        return Swal.fire('خطأ', 'الرجاء تحديد تاريخ البداية والنهاية.', 'error');
-    }
-
-    Swal.fire({
-        title: 'جاري إعداد التقرير الشامل...',
-        text: 'قد يستغرق الأمر بضع ثوانٍ.',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-
-    try {
-        const txsInPeriod = state.transactions.filter(tx => {
-            const account = getAccountById(tx.accountId);
-            return account && account.currency === activeCurrency && dayjs(tx.date).isBetween(startDate, endDate, null, '[]');
-        }).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        if (txsInPeriod.length === 0) {
-            Swal.close();
-            return Swal.fire('لا توجد بيانات', `لا توجد عمليات بالعملة (${activeCurrency}) في الفترة المحددة.`, 'info');
-        }
-
-        // --- حسابات شاملة للتقرير ---
-        let totalIncome = 0, totalExpense = 0, largestIncome = 0, largestExpense = 0, incomeCount = 0, expenseCount = 0;
-        const incomeByCategory = {}, expenseByCategory = {};
-
-        txsInPeriod.forEach(tx => {
-            const category = getCategoryById(tx.category);
-            const categoryName = `${category.icon || ''} ${category.name}`;
-            if (tx.type === 'income') {
-                totalIncome += tx.amount;
-                incomeCount++;
-                if (tx.amount > largestIncome) largestIncome = tx.amount;
-                incomeByCategory[categoryName] = (incomeByCategory[categoryName] || 0) + tx.amount;
-            } else {
-                totalExpense += tx.amount;
-                expenseCount++;
-                if (tx.amount > largestExpense) largestExpense = tx.amount;
-                expenseByCategory[categoryName] = (expenseByCategory[categoryName] || 0) + tx.amount;
-            }
-        });
-
-        const txsBeforePeriod = state.transactions.filter(tx => {
-            const account = getAccountById(tx.accountId);
-            return account && account.currency === activeCurrency && dayjs(tx.date).isBefore(startDate);
-        });
-
-        const openingBalance = txsBeforePeriod.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0);
-        const netFlow = totalIncome - totalExpense;
-        const closingBalance = openingBalance + netFlow;
-
-        const debtsInPeriod = state.debts.filter(d => {
-             const account = getAccountById(d.accountId);
-             return account && account.currency === activeCurrency && dayjs(d.date).isBetween(startDate, endDate, null, '[]');
-        });
-        const newLoansGiven = debtsInPeriod.filter(d => d.type === 'lent').reduce((sum, d) => sum + d.originalAmount, 0);
-        const newDebtsTaken = debtsInPeriod.filter(d => d.type === 'borrowed').reduce((sum, d) => sum + d.originalAmount, 0);
-
-        const currencyBudgets = state.budgets[activeCurrency] || {};
-        const budgetVsActual = Object.entries(currencyBudgets).map(([catId, budgetAmount]) => {
-            const category = getCategoryById(catId);
-            const actualSpent = txsInPeriod
-                .filter(tx => tx.category === catId && tx.type === 'expense')
-                .reduce((sum, tx) => sum + tx.amount, 0);
-            const variance = budgetAmount - actualSpent;
-            return {
-                categoryName: `${category.icon} ${category.name}`,
-                budget: budgetAmount,
-                actual: actualSpent,
-                variance: variance
-            };
-        }).filter(item => item.budget > 0 || item.actual > 0);
-
-        const expenseChartImage = await generateChartImage(expenseByCategory, activeCurrency, 'expense');
-        const incomeChartImage = await generateChartImage(incomeByCategory, activeCurrency, 'income');
-
-        const mainTableData = txsInPeriod.map(tx => {
-            const category = getCategoryById(tx.category);
-            const account = getAccountById(tx.accountId);
-            return [
-                { text: tx.notes || "-", alignment: 'right' },
-                { text: `${tx.type === 'income' ? '+' : '-'} ${formatPdfCurrency(tx.amount)}`, alignment: 'center', noWrap: true, color: tx.type === 'income' ? '#27ae60' : '#c0392b' },
-                { text: account?.name || "", alignment: 'right' },
-                { text: `${category?.icon || ''} ${category?.name || ''}`, alignment: 'right' },
-                { text: tx.date, alignment: 'center', noWrap: true }
-            ];
-        });
-        
-        // --- تعريف بنية التقرير ---
-        var docDefinition = {
-            content: [
-                { text: processBidiText('تقرير مالي شامل'), style: 'header' },
-                { text: processBidiText(`عن الفترة من ${startDate} إلى ${endDate} - العملة: ${activeCurrency}`), style: 'subheader', margin: [0, 0, 0, 20] },
-
-                {
-                    columns: [
-                        {
-                            width: '*',
-                            stack: [
-                                { text: processBidiText('الملخص المالي'), style: 'sectionHeader' },
-                                {
-                                    style: 'summaryCard',
-                                    table: {
-                                        widths: ['*', '*'],
-                                        body: [
-                                            [{ text: formatPdfCurrency(openingBalance), style: 'summaryValue' }, { text: processBidiText('الرصيد الافتتاحي'), style: 'summaryLabel' }],
-                                            [{ text: formatPdfCurrency(totalIncome), style: ['summaryValue', 'profit'] }, { text: processBidiText('إجمالي الدخل'), style: 'summaryLabel' }],
-                                            [{ text: formatPdfCurrency(totalExpense), style: ['summaryValue', 'loss'] }, { text: processBidiText('إجمالي المصروفات'), style: 'summaryLabel' }],
-                                            [{ text: formatPdfCurrency(netFlow), style: ['summaryValue', netFlow >= 0 ? 'profit' : 'loss'] }, { text: processBidiText('صافي التدفق'), style: 'summaryLabel' }],
-                                            [{ text: formatPdfCurrency(closingBalance), style: ['summaryValue', 'closingBalance'] }, { text: processBidiText('الرصيد الختامي'), style: 'summaryLabel', bold: true }]
-                                        ]
-                                    }, layout: 'noBorders'
-                                },
-
-                                { text: processBidiText('مؤشرات الأداء'), style: 'sectionHeader', margin: [0, 15, 0, 5] },
-                                {
-                                     style: 'summaryCard',
-                                     table: {
-                                        widths: ['*', '*'],
-                                        body: [
-                                            [{ text: processBidiText(`${incomeCount} عملية`), style: 'summaryValueSmall' }, { text: processBidiText('عدد عمليات الدخل'), style: 'summaryLabel' }],
-                                            [{ text: processBidiText(`${expenseCount} عملية`), style: 'summaryValueSmall' }, { text: processBidiText('عدد عمليات المصروفات'), style: 'summaryLabel' }],
-                                            [{ text: formatPdfCurrency(largestIncome), style: 'summaryValueSmall' }, { text: processBidiText('أكبر عملية دخل'), style: 'summaryLabel' }],
-                                            [{ text: formatPdfCurrency(largestExpense), style: 'summaryValueSmall' }, { text: processBidiText('أكبر عملية مصروف'), style: 'summaryLabel' }]
-                                        ]
-                                     }, layout: 'noBorders'
-                                },
-
-                                { text: processBidiText('ملخص الديون'), style: 'sectionHeader', margin: [0, 15, 0, 5] },
-                                {
-                                     style: 'summaryCard',
-                                     table: {
-                                        widths: ['*', '*'],
-                                        body: [
-                                            [{ text: formatPdfCurrency(newLoansGiven), style: ['summaryValueSmall', 'loss'] }, { text: processBidiText('سلف جديدة أعطيت'), style: 'summaryLabel' }],
-                                            [{ text: formatPdfCurrency(newDebtsTaken), style: ['summaryValueSmall', 'profit'] }, { text: processBidiText('سلف جديدة أخذت'), style: 'summaryLabel' }]
-                                        ]
-                                     }, layout: 'noBorders'
-                                }
-                            ]
-                        },
-                        { width: 20, text: '' },
-                        {
-                            width: '*',
-                            stack: [
-                                { text: processBidiText('تحليل المصروفات'), style: 'sectionHeader' },
-                                expenseChartImage ? { image: expenseChartImage, width: 240, alignment: 'center' } : { text: processBidiText('لا توجد بيانات مصروفات'), style: 'placeholder' },
-                                
-                                { text: processBidiText('تحليل مصادر الدخل'), style: 'sectionHeader', margin: [0, 20, 0, 5] },
-                                incomeChartImage ? { image: incomeChartImage, width: 240, alignment: 'center' } : { text: processBidiText('لا يوجد بيانات دخل'), style: 'placeholder' }
-                            ]
-                        }
-                    ],
-                    margin: [0, 0, 0, 20]
-                },
-
-                (budgetVsActual.length > 0 ? [
-                    { text: processBidiText('مقارنة الميزانية بالإنفاق الفعلي'), style: 'sectionHeader', pageBreak: 'before' },
-                    {
-                        table: {
-                            headerRows: 1,
-                            widths: ['auto', '*', '*', '*'],
-                            body: [
-                                [{ text: processBidiText('الفائض/العجز'), style: 'tableHeader' }, { text: processBidiText('الفعلي'), style: 'tableHeader' }, { text: processBidiText('الميزانية'), style: 'tableHeader' }, { text: processBidiText('الفئة'), style: 'tableHeader' }],
-                                ...budgetVsActual.map(item => [
-                                    { text: formatPdfCurrency(item.variance), alignment: 'center', color: item.variance >= 0 ? '#27ae60' : '#c0392b' },
-                                    { text: formatPdfCurrency(item.actual), alignment: 'center' },
-                                    { text: formatPdfCurrency(item.budget), alignment: 'center' },
-                                    { text: item.categoryName, alignment: 'right' }
-                                ])
-                            ]
-                        }, layout: 'lightHorizontalLines'
-                    }
-                ] : { text: '' }),
-                
-                { text: processBidiText('سجل العمليات المفصل'), style: 'sectionHeader', pageBreak: 'before' },
-                {
-                    table: {
-                        headerRows: 1,
-                        widths: ['*', 'auto', 'auto', 'auto', 'auto'],
-                        body: [
-                            [{ text: processBidiText('الوصف'), style: 'tableHeader' }, { text: processBidiText('المبلغ'), style: 'tableHeader' }, { text: processBidiText('الحساب'), style: 'tableHeader' }, { text: processBidiText('الفئة'), style: 'tableHeader' }, { text: processBidiText('التاريخ'), style: 'tableHeader' }],
-                            ...mainTableData
-                        ]
-                    },
-                     layout: {
-                        fillColor: (rowIndex) => (rowIndex % 2 === 0) ? '#ecf0f1' : null
-                    }
-                }
-            ],
-            
-            header: (currentPage, pageCount) => ({
-                text: processBidiText(`صفحة ${currentPage.toString()} من ${pageCount}`),
-                alignment: 'right',
-                style: 'footer'
-            }),
-            footer: {
-                text: processBidiText(`تم إنشاء التقرير بواسطة "مديري المالي الذكي" بتاريخ ${dayjs().format('YYYY-MM-DD')}`),
-                alignment: 'center',
-                style: 'footer'
-            },
-            styles: {
-                header: { fontSize: 24, bold: true, alignment: 'center', margin: [0, 0, 0, 5], color: '#2c3e50' },
-                subheader: { fontSize: 12, alignment: 'center', color: '#7f8c8d' },
-                sectionHeader: { fontSize: 16, bold: true, margin: [0, 15, 0, 5], color: '#2980b9' },
-                tableHeader: { bold: true, alignment: 'center', fillColor: '#34495e', color: 'white', fontSize: 11 },
-                footer: { fontSize: 8, margin: [40, 10], color: 'gray' },
-                summaryCard: { margin: [0, 5, 0, 10], fillColor: '#f8f9f9', },
-                summaryLabel: { alignment: 'right', bold: true, color: '#34495e', margin: [0, 2, 0, 2] },
-                summaryValue: { fontSize: 15, bold: true, alignment: 'center', margin: [0, 2, 0, 2] },
-                summaryValueSmall: { fontSize: 12, bold: false, alignment: 'center' },
-                closingBalance: { color: '#2c3e50', bold: true, fontSize: 16 },
-                profit: { color: '#27ae60' },
-                loss: { color: '#c0392b' },
-                placeholder: { alignment: 'center', color: '#95a5a6', margin: [0, 20] }
-            },
-            defaultStyle: {
-                font: 'Amiri',
-                alignment: 'right',
-                fontSize: 10,
-                color: '#34495e'
-            }
-        };
-
-        pdfMake.createPdf(docDefinition).download(`Financial-Report-${activeCurrency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
-        Swal.close();
-
-    } catch (error) {
-        console.error("PDF Generation Error:", error);
-        Swal.close();
-        Swal.fire({ icon: 'error', title: 'خطأ في الطباعة', text: error.message || 'حدث خطأ غير متوقع أثناء إنشاء الملف.' });
-    }
-}
 
 
 
