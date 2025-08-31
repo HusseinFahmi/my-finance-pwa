@@ -606,7 +606,7 @@
             `;
             }
 
-            function getAccountsView(accountId = null) {
+                                function getAccountsView(accountId = null) {
                 if (accountId) {
                     return getAccountDetailView(accountId);
                 }
@@ -614,12 +614,12 @@
                 const accountCards = state.settings.accounts.map(account => {
                     const balance = allTimeTotals.accounts[account.id]?.balance || 0;
                     return `<button data-account-id="${account.id}" class="account-card-btn bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center transform hover:scale-105 transition-transform duration-200">
-                        <p class="text-lg text-gray-500 dark:text-gray-400">${getAccountDisplayName(account)}</p>
+                        <p class="text-lg text-gray-500 dark:text-gray-400">${account.name}</p>
                         <p class="text-4xl font-bold text-gray-900 dark:text-white mt-2">${formatCurrency(balance, account.currency)}</p>
                     </button>`;
                 }).join('');
 
-                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${getAccountDisplayName(acc)}</option>`).join('');
+                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
 
                 return `
                 <div class="space-y-6">
@@ -629,47 +629,38 @@
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                          <h3 class="text-xl font-semibold mb-4">تحويل داخلي (بين حسابات بنفس العملة)</h3>
                          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                            <div><label for="internal-transfer-from" class="block text-sm">من حساب</label><select id="internal-transfer-from" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded-md">${accountOptions}</select></div>
-                            <div><label for="internal-transfer-amount" class="block text-sm">المبلغ</label><input type="number" id="internal-transfer-amount" placeholder="0.00" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded-md"></div>
-                            <div><label for="internal-transfer-to" class="block text-sm">إلى حساب</label><select id="internal-transfer-to" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded-md">${accountOptions}</select></div>
+                            <div><label for="internal-transfer-from" class="block text-sm">من حساب</label><select id="internal-transfer-from" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded">${accountOptions}</select></div>
+                            <div><label for="internal-transfer-amount" class="block text-sm">المبلغ</label><input type="number" id="internal-transfer-amount" placeholder="0.00" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded"></div>
+                            <div><label for="internal-transfer-to" class="block text-sm">إلى حساب</label><select id="internal-transfer-to" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded">${accountOptions}</select></div>
                          </div>
                          <button id="execute-internal-transfer-btn" class="w-full mt-4 px-4 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-bold transition">تنفيذ التحويل الداخلي</button>
                     </div>
                     
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                          <h3 class="text-xl font-semibold mb-4">تحويل عملات (مصارفة)</h3>
-                         
-                         <!-- ================== START: MODIFICATIONS FOR RESPONSIVENESS ================== -->
-                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-                            
-                            <!-- القسم الأيمن: من -->
-                            <div class="space-y-2">
-                                <label for="exchange-from-amount" class="block text-sm font-medium">المبلغ المحول</label>
-                                <!-- العناصر ستكون عمودية على الجوال، وأفقية على الشاشات الأكبر -->
-                                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1 sm:space-x-reverse">
-                                    <input type="number" id="exchange-from-amount" placeholder="0.00" class="w-full sm:flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-md border-transparent focus:ring-2 focus:ring-blue-500">
-                                    <select id="exchange-from-account" class="w-full sm:w-auto bg-gray-200 dark:bg-gray-600 p-2 rounded-md border-transparent focus:ring-2 focus:ring-blue-500">${accountOptions}</select>
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                            <div>
+                                <label for="exchange-from-amount" class="block text-sm">المبلغ المحول</label>
+                                <!-- START: Responsive Fix -->
+                                <div class="flex flex-col sm:flex-row mt-1">
+                                    <input type="number" id="exchange-from-amount" placeholder="0.00" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-md sm:rounded-r-md sm:rounded-l-none">
+                                    <select id="exchange-from-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-md sm:rounded-l-md sm:rounded-r-none mt-1 sm:mt-0">${accountOptions}</select>
                                 </div>
+                                <!-- END: Responsive Fix -->
                             </div>
-
-                            <!-- القسم الأيسر: إلى -->
-                            <div class="space-y-2">
-                                <label for="exchange-rate" class="block text-sm font-medium">سعر الصرف (<span id="exchange-rate-helper"></span>)</label>
-                                <!-- نفس المنطق: عمودي على الجوال، أفقي على الأكبر -->
-                                <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-1 sm:space-x-reverse">
-                                    <input type="number" step="any" id="exchange-rate" placeholder="سعر الصرف" class="w-full sm:flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-md border-transparent focus:ring-2 focus:ring-blue-500">
-                                    <select id="exchange-to-account" class="w-full sm:w-auto bg-gray-200 dark:bg-gray-600 p-2 rounded-md border-transparent focus:ring-2 focus:ring-blue-500">${accountOptions}</select>
-                                    <button id="calculate-inverse-rate-btn" class="w-full sm:w-auto p-2 bg-gray-300 dark:bg-gray-500 rounded-md hover:bg-gray-400 flex justify-center items-center" title="حساب السعر العكسي">
-                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 8a1 1 0 100 2h1.586l-2.293 2.293a1 1 0 001.414 1.414L8 11.414V13a1 1 0 102 0v-1.586l2.293 2.293a1 1 0 001.414-1.414L11.414 10H13a1 1 0 100-2h-1.586l2.293-2.293a1 1 0 00-1.414-1.414L10 6.586V5a1 1 0 10-2 0v1.586L5.707 4.293a1 1 0 00-1.414 1.414L6.586 8H5z" /></svg>
-                                    </button>
+                            <div>
+                                <label for="exchange-rate" class="block text-sm">سعر الصرف (<span id="exchange-rate-helper"></span>)</label>
+                                <!-- START: Responsive Fix -->
+                                <div class="flex flex-col sm:flex-row mt-1">
+                                    <input type="number" step="any" id="exchange-rate" placeholder="سعر الصرف" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-md sm:rounded-r-md sm:rounded-l-none">
+                                    <select id="exchange-to-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-md sm:rounded-l-md sm:rounded-r-none mt-1 sm:mt-0">${accountOptions}</select>
                                 </div>
+                                <!-- END: Responsive Fix -->
                             </div>
                          </div>
-                         <!-- =================== END: MODIFICATIONS FOR RESPONSIVENESS =================== -->
-
                          <div class="mt-4">
-                             <label for="exchange-notes" class="block text-sm font-medium">ملاحظات (اختياري)</label>
-                             <textarea id="exchange-notes" rows="2" placeholder="مثال: تحويل مصاريف السفر..." class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded-md border-transparent focus:ring-2 focus:ring-blue-500"></textarea>
+                             <label for="exchange-notes" class="block text-sm">ملاحظات (اختياري)</label>
+                             <textarea id="exchange-notes" rows="2" placeholder="مثال: تحويل مصاريف السفر..." class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded"></textarea>
                          </div>
                          <div class="mt-4 bg-blue-100 dark:bg-blue-900/50 p-3 rounded-lg text-center">
                             <p class="text-sm text-blue-800 dark:text-blue-300">سيصل إلى حسابك</p>
