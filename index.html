@@ -648,9 +648,12 @@
                             </div>
                             <div>
                                 <label for="exchange-rate" class="block text-sm">سعر الصرف (<span id="exchange-rate-helper"></span>)</label>
-                                <div class="flex flex-col sm:flex-row mt-1">
-                                    <input type="number" step="any" id="exchange-rate" placeholder="سعر الصرف" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-md sm:rounded-r-md sm:rounded-l-none">
-                                    <select id="exchange-to-account" class="bg-gray-200 dark:bg-gray-600 p-2 rounded-md sm:rounded-l-md sm:rounded-r-none mt-1 sm:mt-0">${accountOptions}</select>
+                                <div class="flex items-center mt-1">
+                                    <input type="number" step="any" id="exchange-rate" placeholder="سعر الصرف" class="flex-grow bg-gray-100 dark:bg-gray-700 p-2 rounded-r-md rounded-l-none">
+                                    <select id="exchange-to-account" class="bg-gray-200 dark:bg-gray-600 p-2">${accountOptions}</select>
+                                    <button id="calculate-inverse-rate-btn" class="p-2 bg-gray-300 dark:bg-gray-500 rounded-l-md hover:bg-gray-400" title="حساب السعر العكسي">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 8a1 1 0 100 2h1.586l-2.293 2.293a1 1 0 001.414 1.414L8 11.414V13a1 1 0 102 0v-1.586l2.293 2.293a1 1 0 001.414-1.414L11.414 10H13a1 1 0 100-2h-1.586l2.293-2.293a1 1 0 00-1.414-1.414L10 6.586V5a1 1 0 10-2 0v1.586L5.707 4.293a1 1 0 00-1.414 1.414L6.586 8H5z" /></svg>
+                                    </button>
                                 </div>
                             </div>
                          </div>
@@ -779,6 +782,9 @@
             }
 
             function getDebtsView() {
+                const people = [...new Set(state.debts.map(d => d.person))].sort();
+                const peopleOptions = people.map(p => `<option value="${p}">${p}</option>`).join('');
+
                 return `
     <div class="space-y-6">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
@@ -786,27 +792,35 @@
             <div id="debt-currency-tabs" class="flex space-x-1 space-x-reverse bg-gray-200 dark:bg-gray-700 p-1 rounded-lg"></div>
         </div>
         
-        <!-- Search and Filters Section -->
         <div class="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input type="text" id="debt-search-input" placeholder="ابحث باسم شخص لتجميع ديونه..." class="w-full sm:col-span-1 bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
                 <select id="debt-period-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
-                    <option value="all">كل الأوقات</option>
-                    <option value="month">هذا الشهر</option>
-                    <option value="year">هذه السنة</option>
+                    <option value="all">كل الأوقات</option><option value="month">هذا الشهر</option><option value="year">هذه السنة</option>
                 </select>
                 <select id="debt-type-filter" class="w-full bg-gray-100 dark:bg-gray-700 border-transparent rounded-md p-2 focus:ring-2 focus:ring-blue-500">
-                    <option value="all">كل الأنواع (لك وعليك)</option>
-                    <option value="lent">ديون لك فقط</option>
-                    <option value="borrowed">ديون عليك فقط</option>
+                    <option value="all">كل الأنواع (لك وعليك)</option><option value="lent">ديون لك فقط</option><option value="borrowed">ديون عليك فقط</option>
                 </select>
             </div>
         </div>
 
-        <!-- Debt Lists or Aggregated Cards -->
         <div id="debt-lists-container" class="space-y-4"></div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-8">
+            <h3 class="text-xl font-semibold mb-4">طباعة كشف حساب الديون</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div><label for="debt-report-person" class="block text-sm">الشخص</label><select id="debt-report-person" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded"><option value="all">جميع الأشخاص</option>${peopleOptions}</select></div>
+                <div><label for="debt-report-start-date" class="block text-sm">من تاريخ</label><input type="date" id="debt-report-start-date" value="${dayjs().startOf('year').format('YYYY-MM-DD')}" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded"></div>
+                <div><label for="debt-report-end-date" class="block text-sm">إلى تاريخ</label><input type="date" id="debt-report-end-date" value="${dayjs().endOf('year').format('YYYY-MM-DD')}" class="mt-1 w-full bg-gray-100 dark:bg-gray-700 p-2 rounded"></div>
+                <button id="print-debt-report-btn" class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-bold transition flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4v2h10V4H5zm0 10h10v-6H5v6zm12-9h-2V3h- hükümet 2v2H7V3H5v2H3v12h2v2h2v-2h8v2h2v-2h2V5h-2z" /><path d="M15 12H9v-2h6v2z" /></svg>
+                    طباعة التقرير
+                </button>
+            </div>
+        </div>
     </div>`;
             }
+
 
             function createPersonDebtCardHTML(person, data, currency) {
                 const totalLent = data.lentItems.reduce((sum, debt) => sum + debt.amount, 0);
@@ -1329,26 +1343,23 @@
                 const isPaid = d.status === 'paid';
                 const amountColor = isLent ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
 
-                let statusHTML = '';
-                if (isPaid) {
-                    statusHTML = `<span class="text-xs font-bold text-white bg-gray-500 px-2 py-1 rounded-full">مسدد بالكامل</span>`;
-                } else {
-                    const remainingText = d.amount < (d.originalAmount || d.amount) ? `المتبقي: ${formatCurrency(d.amount, account?.currency || '')}` : `${formatCurrency(d.amount, account?.currency || '')}`;
-                    statusHTML = `<p class="text-lg font-bold ${amountColor}">${remainingText}</p>`;
-                }
+                let statusHTML = isPaid
+                    ? `<span class="text-xs font-bold text-white bg-gray-500 px-2 py-1 rounded-full">مسدد بالكامل</span>`
+                    : `<p class="text-lg font-bold ${amountColor}">${formatCurrency(d.amount, account?.currency || '')}</p>`;
 
                 const buttonsHTML = !isPaid ? `
-    <div class="flex items-center space-x-2 space-x-reverse">
-        <button class="mark-paid-btn text-xs px-3 py-1 rounded-full ${isLent ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 hover:bg-green-200' : 'bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-200 hover:bg-red-200'}" data-id="${d.id}">${isLent ? 'تحصيل' : 'سداد'}</button>
-        <button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-    </div>
-` : `<button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
+    <div class="flex items-center space-x-1 space-x-reverse">
+        <button class="mark-paid-btn text-xs px-3 py-1 rounded-full ${isLent ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} dark:bg-opacity-20 hover:bg-opacity-80" data-id="${d.id}">${isLent ? 'تحصيل' : 'سداد'}</button>
+        <button class="convert-currency-btn text-gray-400 hover:text-blue-500" data-id="${d.id}" title="تحويل عملة الدين">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.414L11 10.586V6z" clip-rule="evenodd" /><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" transform="rotate(45 10 10)"/></svg>
+        </button>
+        <button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}" title="حذف الدين"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+    </div>` : `<button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
 
-                // --- تعديل لإضافة الملاحظات ---
                 const notesHTML = d.notes ? `<p class="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">"${d.notes}"</p>` : '';
 
                 return `
-    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex items-start justify-between ${isPaid ? 'opacity-60' : ''}">
+    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex items-start justify-between ${isPaid ? 'opacity-60' : ''}">
         <div>
             <p class="font-bold text-lg">${d.person}</p>
             ${statusHTML}
@@ -1359,9 +1370,9 @@
         <div class="flex flex-col items-end space-y-2">
             ${buttonsHTML}
         </div>
-    </div>
-    `;
+    </div>`;
             }
+
 
             function createAggregatedDebtCardHTML(person, aggregatedDebts, currency) {
                 const { lentItems, borrowedItems } = aggregatedDebts;
@@ -1730,56 +1741,42 @@
 
             function attachAccountsListeners(accountId = null) {
                 if (accountId) {
-                    // Detail view listeners (لا يوجد تغيير هنا)
+                    // Detail view listeners (no changes here)
                     document.getElementById('back-to-accounts-btn')?.addEventListener('click', () => renderView('accounts'));
-
                     const refilterDetail = () => renderAccountDetailTransactions(accountId);
-                    document.getElementById('search-input')?.addEventListener('input', refilterDetail);
-                    document.getElementById('filter-period')?.addEventListener('change', refilterDetail);
-                    document.getElementById('filter-category')?.addEventListener('change', refilterDetail);
-                    document.getElementById('filter-type')?.addEventListener('change', refilterDetail);
-                    document.getElementById('sort-date')?.addEventListener('change', refilterDetail);
-
+                    ['search-input', 'filter-period', 'filter-category', 'filter-type', 'sort-date'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.addEventListener(id === 'search-input' ? 'input' : 'change', refilterDetail);
+                    });
                     document.getElementById('transactions-list')?.addEventListener('click', e => {
                         const editBtn = e.target.closest('.edit-btn');
                         const deleteBtn = e.target.closest('.delete-btn');
                         if (editBtn) showTransactionModal(editBtn.dataset.id);
                         if (deleteBtn) handleDeleteTransaction(deleteBtn.dataset.id);
                     });
-
                     renderAccountDetailTransactions(accountId);
-
                 } else {
-                    // Main view listeners (هنا تمت التعديلات)
+                    // Main view listeners (changes are here)
                     document.querySelectorAll('.account-card-btn').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            renderView('accounts', { accountId: btn.dataset.accountId });
-                        });
+                        btn.addEventListener('click', () => renderView('accounts', { accountId: btn.dataset.accountId }));
                     });
                     document.getElementById('execute-internal-transfer-btn')?.addEventListener('click', handleInternalTransfer);
                     document.getElementById('execute-exchange-btn')?.addEventListener('click', handleExecuteExchange);
+                    // NEW: Listener for inverse rate calculator
+                    document.getElementById('calculate-inverse-rate-btn')?.addEventListener('click', handleCalculateInverseRate);
 
                     const fromInternalSelect = document.getElementById('internal-transfer-from');
                     const toInternalSelect = document.getElementById('internal-transfer-to');
 
                     const updateInternalToAccountOptions = () => {
                         if (!fromInternalSelect || !toInternalSelect) return;
-                        const selectedFromId = fromInternalSelect.value;
-                        const fromAccount = getAccountById(selectedFromId);
+                        const fromAccount = getAccountById(fromInternalSelect.value);
                         if (!fromAccount) return;
-                        const compatibleAccounts = state.settings.accounts.filter(
-                            acc => acc.currency === fromAccount.currency && acc.id !== selectedFromId
-                        );
-                        toInternalSelect.innerHTML = compatibleAccounts.map(acc =>
-                            `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`
-                        ).join('');
-                        if (compatibleAccounts.length === 0) {
-                            toInternalSelect.innerHTML = '<option value="">لا يوجد حساب آخر بنفس العملة</option>';
-                        }
+                        const compatibleAccounts = state.settings.accounts.filter(acc => acc.currency === fromAccount.currency && acc.id !== fromAccount.id);
+                        toInternalSelect.innerHTML = compatibleAccounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
+                        toInternalSelect.disabled = compatibleAccounts.length === 0;
                     };
-
                     fromInternalSelect?.addEventListener('change', updateInternalToAccountOptions);
-                    updateInternalToAccountOptions();
 
                     const exchangeFromAccount = document.getElementById('exchange-from-account');
                     const exchangeToAccount = document.getElementById('exchange-to-account');
@@ -1787,59 +1784,70 @@
                     const updateExchangePreview = () => {
                         const fromAccount = getAccountById(exchangeFromAccount?.value);
                         const toAccount = getAccountById(exchangeToAccount?.value);
-                        // قد يكون الحقل "إلى" فارغاً مؤقتاً، لذلك نتحقق منه
                         if (!fromAccount || !toAccount) {
                             document.getElementById('exchange-result').textContent = formatCurrency(0, '');
-                            document.getElementById('exchange-rate-helper').textContent = ``;
+                            document.getElementById('exchange-rate-helper').textContent = '';
                             return;
-                        };
-
+                        }
                         const amount = parseFloat(document.getElementById('exchange-from-amount')?.value) || 0;
                         const rate = parseFloat(document.getElementById('exchange-rate')?.value) || 0;
-                        const toAmount = amount * rate;
-                        document.getElementById('exchange-result').textContent = formatCurrency(toAmount, toAccount.currency);
+                        document.getElementById('exchange-result').textContent = formatCurrency(amount * rate, toAccount.currency);
                         document.getElementById('exchange-rate-helper').textContent = `1 ${fromAccount.currency} = ? ${toAccount.currency}`;
                     };
 
-                    // دالة جديدة: تقوم بتحديث الخيارات في حقل "إلى حساب"
                     const updateExchangeToAccountOptions = () => {
                         if (!exchangeFromAccount || !exchangeToAccount) return;
-
-                        const selectedFromId = exchangeFromAccount.value;
-                        const fromAccount = getAccountById(selectedFromId);
+                        const fromAccount = getAccountById(exchangeFromAccount.value);
                         if (!fromAccount) return;
-
-                        // فلترة الحسابات لإظهار الحسابات ذات العملات المختلفة فقط
-                        const compatibleToAccounts = state.settings.accounts.filter(
-                            acc => acc.currency !== fromAccount.currency
-                        );
-
+                        const compatibleToAccounts = state.settings.accounts.filter(acc => acc.currency !== fromAccount.currency);
                         if (compatibleToAccounts.length > 0) {
-                            // إعادة بناء الخيارات الجديدة
-                            exchangeToAccount.innerHTML = compatibleToAccounts.map(acc =>
-                                `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`
-                            ).join('');
+                            exchangeToAccount.innerHTML = compatibleToAccounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
                             exchangeToAccount.disabled = false;
                         } else {
-                            // في حال عدم وجود عملات أخرى للمصارفة معها
                             exchangeToAccount.innerHTML = `<option value="">لا توجد عملات أخرى</option>`;
                             exchangeToAccount.disabled = true;
                         }
-
-                        // تحديث نافذة المعاينة بعد تغيير الخيارات
                         updateExchangePreview();
                     };
 
-                    // ربط المستمعات بالأحداث
                     ['exchange-from-amount', 'exchange-rate', 'exchange-to-account'].forEach(id => {
                         document.getElementById(id)?.addEventListener('input', updateExchangePreview);
                     });
-
-                    // الأهم: ربط حقل "من حساب" بالدالة الجديدة التي تحدث الخيارات
                     exchangeFromAccount?.addEventListener('change', updateExchangeToAccountOptions);
 
-                    // استدعاء الدوال مرة واحدة عند تحميل الصفحة لضبط الحالة الأولية الصحيحة
+                    updateInternalToAccountOptions();
                     updateExchangeToAccountOptions();
+                }
+            }
+
+            async function handleCalculateInverseRate() {
+                const fromAccount = getAccountById(document.getElementById('exchange-from-account').value);
+                const toAccount = getAccountById(document.getElementById('exchange-to-account').value);
+
+                if (!fromAccount || !toAccount) return;
+
+                const { value: inverseRate } = await Swal.fire({
+                    title: 'حاسبة السعر العكسي',
+                    html: `أدخل السعر الأسهل عليك.<br><b>1 ${toAccount.currency} = ? ${fromAccount.currency}</b>`,
+                    input: 'number',
+                    inputAttributes: { step: 'any' },
+                    inputPlaceholder: `مثال: 350`,
+                    showCancelButton: true,
+                    confirmButtonText: 'حساب ووضع السعر',
+                    cancelButtonText: 'إلغاء',
+                    inputValidator: (value) => {
+                        if (!value || parseFloat(value) <= 0) {
+                            return 'الرجاء إدخال سعر صرف صحيح وموجب!';
+                        }
+                    }
+                });
+
+                if (inverseRate) {
+                    const calculatedRate = 1 / parseFloat(inverseRate);
+                    const rateInput = document.getElementById('exchange-rate');
+                    rateInput.value = calculatedRate.toFixed(10); // Use high precision
+                    // Trigger input event to update preview
+                    rateInput.dispatchEvent(new Event('input'));
                 }
             }
 
@@ -1905,7 +1913,7 @@
 
                         state.transactions.push({ id: generateId(), type: 'expense', accountId: fromAccountId, amount: fromAmount, category: 'exchange-out', date, notes: finalNote });
                         state.transactions.push({ id: generateId(), type: 'income', accountId: toAccountId, amount: toAmount, category: 'exchange-in', date, notes: finalReceivedNote });
-                        
+
                         updateAndRerender();
                         Swal.fire({ title: 'تم بنجاح', text: 'تمت عملية المصارفة بنجاح.', icon: 'success', confirmButtonText: 'ممتاز' });
                     }
@@ -1953,10 +1961,7 @@
                     renderDebtsList(activeCurrency);
                 };
 
-                // Add listener for live search
                 document.getElementById('debt-search-input')?.addEventListener('input', reRenderBasedOnCurrency);
-
-                // Listeners for filters
                 document.getElementById('debt-period-filter')?.addEventListener('change', reRenderBasedOnCurrency);
                 document.getElementById('debt-type-filter')?.addEventListener('change', reRenderBasedOnCurrency);
 
@@ -1964,13 +1969,183 @@
                     const currencyTab = e.target.closest('.debt-currency-tab');
                     const markPaidBtn = e.target.closest('.mark-paid-btn');
                     const deleteDebtBtn = e.target.closest('.delete-debt-btn');
-                    const aggregatedPayBtn = e.target.closest('.aggregated-pay-btn'); // NEW
+                    const aggregatedPayBtn = e.target.closest('.aggregated-pay-btn');
+                    const convertCurrencyBtn = e.target.closest('.convert-currency-btn'); // New
+                    const printDebtReportBtn = e.target.closest('#print-debt-report-btn'); // New
 
                     if (currencyTab) renderDebtsList(currencyTab.dataset.currency);
                     if (markPaidBtn) handleMarkDebtAsPaid(markPaidBtn.dataset.id);
                     if (deleteDebtBtn) handleDeleteDebt(deleteDebtBtn.dataset.id);
-                    if (aggregatedPayBtn) handleAggregatedPayment(aggregatedPayBtn.dataset); // NEW
+                    if (aggregatedPayBtn) handleAggregatedPayment(aggregatedPayBtn.dataset);
+                    if (convertCurrencyBtn) handleConvertDebtCurrency(convertCurrencyBtn.dataset.id); // New
+                    if (printDebtReportBtn) handlePrintDebtReport(); // New
                 });
+            }
+
+            async function handleConvertDebtCurrency(debtId) {
+                const debt = state.debts.find(d => d.id === debtId);
+                if (!debt) return;
+
+                const fromAccount = getAccountById(debt.accountId);
+                const fromCurrency = fromAccount.currency;
+
+                // 1. Select target account (with a different currency)
+                const targetAccounts = state.settings.accounts.filter(acc => acc.currency !== fromCurrency);
+                if (targetAccounts.length === 0) {
+                    return Swal.fire('خطأ', 'لا يوجد لديك حسابات بعملة أخرى لتحويل الدين إليها.', 'error');
+                }
+                const accountOptions = targetAccounts.reduce((opts, acc) => {
+                    opts[acc.id] = `${acc.name} (${acc.currency})`;
+                    return opts;
+                }, {});
+
+                const { value: targetAccountId } = await Swal.fire({
+                    title: 'تحويل عملة الدين',
+                    text: 'اختر الحساب الذي تريد أن يتبع له الدين بالعملة الجديدة:',
+                    input: 'select',
+                    inputOptions: accountOptions,
+                    showCancelButton: true,
+                    confirmButtonText: 'التالي →'
+                });
+
+                if (!targetAccountId) return;
+
+                const toAccount = getAccountById(targetAccountId);
+                const toCurrency = toAccount.currency;
+
+                // 2. Get exchange rate from user
+                const { value: rate } = await Swal.fire({
+                    title: 'سعر الصرف',
+                    html: `أدخل سعر الصرف لتحويل الدين من <b>${fromCurrency}</b> إلى <b>${toCurrency}</b><br>1 ${fromCurrency} = ? ${toCurrency}`,
+                    input: 'number',
+                    inputAttributes: { step: 'any' },
+                    showCancelButton: true,
+                    confirmButtonText: 'تأكيد التحويل',
+                    inputValidator: (value) => !value || value <= 0 ? 'الرجاء إدخال سعر صرف صحيح!' : null
+                });
+
+                if (!rate) return;
+                const exchangeRate = parseFloat(rate);
+                const newAmount = debt.amount * exchangeRate;
+
+                // 3. Confirm and update state
+                Swal.fire({
+                    title: 'هل أنت متأكد؟',
+                    html: `سيتم تحويل الدين من <b>${formatCurrency(debt.amount, fromCurrency)}</b> إلى <b>${formatCurrency(newAmount, toCurrency)}</b> بشكل دائم.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'نعم، قم بالتحويل',
+                    cancelButtonText: 'إلغاء'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        debt.accountId = targetAccountId;
+                        debt.amount = newAmount;
+                        debt.originalAmount = newAmount;
+                        const conversionNote = `(تم تحويله من ${formatCurrency(debt.amount, fromCurrency)} بتاريخ ${dayjs().format('YYYY-MM-DD')})`;
+                        debt.notes = debt.notes ? `${debt.notes}\n${conversionNote}` : conversionNote;
+
+                        updateAndRerender();
+                        Swal.fire('تم بنجاح!', 'تم تحويل عملة الدين بنجاح.', 'success');
+                    }
+                });
+            }
+
+            async function handlePrintDebtReport() {
+                const processBidiText = (text) => {
+                    if (typeof text !== 'string') text = String(text);
+                    return /[\u0600-\u06FF]/.test(text) ? text.split(' ').reverse().join(' ') : text;
+                };
+                const formatPdfCurrency = (amount) => amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+                pdfMake.fonts = { Amiri: { normal: 'Amiri-Regular.ttf', bold: 'Amiri-Bold.ttf' } };
+
+                const person = document.getElementById('debt-report-person').value;
+                const startDate = document.getElementById('debt-report-start-date').value;
+                const endDate = document.getElementById('debt-report-end-date').value;
+                const currency = document.querySelector('.debt-currency-tab.bg-blue-500')?.dataset.currency;
+
+                if (!currency) return Swal.fire('خطأ', 'الرجاء تحديد عملة من التبويبات أولاً.', 'error');
+
+                Swal.fire({ title: 'جاري إعداد التقرير...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                let filteredDebts = state.debts.filter(d => {
+                    const account = getAccountById(d.accountId);
+                    const personMatch = (person === 'all' || d.person === person);
+                    const currencyMatch = account && account.currency === currency;
+                    const dateMatch = dayjs(d.date).isBetween(startDate, endDate, null, '[]');
+                    return personMatch && currencyMatch && dateMatch;
+                });
+
+                if (filteredDebts.length === 0) {
+                    Swal.close();
+                    return Swal.fire('لا توجد بيانات', 'لم يتم العثور على ديون تطابق معايير البحث.', 'info');
+                }
+
+                const lentDebts = filteredDebts.filter(d => d.type === 'lent');
+                const borrowedDebts = filteredDebts.filter(d => d.type === 'borrowed');
+
+                const totalLent = lentDebts.reduce((sum, d) => sum + d.amount, 0);
+                const totalBorrowed = borrowedDebts.reduce((sum, d) => sum + d.amount, 0);
+                const netPosition = totalLent - totalBorrowed;
+
+                const createTable = (debts, title) => {
+                    if (debts.length === 0) return [];
+                    return [
+                        { text: processBidiText(title), style: 'sectionHeader', margin: [0, 15, 0, 5] },
+                        {
+                            table: {
+                                headerRows: 1, widths: ['*', 'auto', 'auto', 'auto'],
+                                body: [
+                                    [{ text: processBidiText('الحالة'), style: 'tableHeader' }, { text: processBidiText('الملاحظات'), style: 'tableHeader' }, { text: processBidiText('المبلغ'), style: 'tableHeader' }, { text: processBidiText(person === 'all' ? 'الشخص' : 'التاريخ'), style: 'tableHeader' }],
+                                    ...debts.map(d => [
+                                        { text: processBidiText(d.status === 'paid' ? 'مسدد' : 'غير مسدد'), alignment: 'center' },
+                                        { text: processBidiText(d.notes || '-'), alignment: 'right' },
+                                        { text: `${formatPdfCurrency(d.amount)} ${currency}`, alignment: 'center' },
+                                        { text: processBidiText(person === 'all' ? d.person : d.date), alignment: 'center' }
+                                    ])
+                                ]
+                            }, layout: 'lightHorizontalLines'
+                        }
+                    ];
+                };
+
+                const docDefinition = {
+                    content: [
+                        { text: processBidiText('كشف حساب الديون'), style: 'header' },
+                        { text: processBidiText(`للشخص: ${person === 'all' ? 'الكل' : person} | الفترة: ${startDate} إلى ${endDate}`), style: 'subheader' },
+
+                        { text: processBidiText('ملخص الموقف المالي'), style: 'sectionHeader' },
+                        {
+                            style: 'summaryCard',
+                            table: {
+                                widths: ['*', '*'],
+                                body: [
+                                    [{ text: `${formatPdfCurrency(totalLent)} ${currency}`, style: ['summaryValue', 'profit'] }, { text: processBidiText('إجمالي الديون لك'), style: 'summaryLabel' }],
+                                    [{ text: `${formatPdfCurrency(totalBorrowed)} ${currency}`, style: ['summaryValue', 'loss'] }, { text: processBidiText('إجمالي الديون عليك'), style: 'summaryLabel' }],
+                                    [{ text: `${formatPdfCurrency(Math.abs(netPosition))} ${currency}`, style: ['summaryValue', netPosition >= 0 ? 'profit' : 'loss'] }, { text: processBidiText(netPosition >= 0 ? 'الصافي لك' : 'الصافي عليك'), style: 'summaryLabel', bold: true }]
+                                ]
+                            }, layout: 'noBorders'
+                        },
+
+                        ...createTable(lentDebts.sort((a, b) => a.person.localeCompare(b.person)), 'تفاصيل الديون التي لك'),
+                        ...createTable(borrowedDebts.sort((a, b) => a.person.localeCompare(b.person)), 'تفاصيل الديون التي عليك')
+                    ],
+                    styles: {
+                        header: { fontSize: 22, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
+                        subheader: { fontSize: 12, alignment: 'center', color: 'gray', margin: [0, 0, 0, 20] },
+                        sectionHeader: { fontSize: 16, bold: true, margin: [0, 15, 0, 5], color: '#2980b9' },
+                        tableHeader: { bold: true, alignment: 'center', fillColor: '#34495e', color: 'white', fontSize: 11 },
+                        summaryCard: { margin: [0, 5, 0, 10], fillColor: '#f8f9f9' },
+                        summaryLabel: { alignment: 'right', color: '#34495e', margin: [0, 4, 0, 4] },
+                        summaryValue: { fontSize: 14, bold: true, alignment: 'center' },
+                        profit: { color: '#27ae60' },
+                        loss: { color: '#c0392b' },
+                    },
+                    defaultStyle: { font: 'Amiri', alignment: 'right', fontSize: 10 }
+                };
+
+                pdfMake.createPdf(docDefinition).download(`Debt-Report-${person}-${currency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
+                Swal.close();
             }
 
             async function handleAggregatedPayment(dataset) {
@@ -2478,18 +2653,18 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     // --- CALCULATIONS ---
                     const metrics = calculateMonthlyMetrics(txsInPeriod); // Use the accurate metrics function
                     const { actualIncome, actualExpense } = metrics;
-                    
-                    const largestIncomeTx = txsInPeriod.filter(t=>t.type === 'income').sort((a,b) => b.amount - a.amount)[0];
-                    const largestExpenseTx = txsInPeriod.filter(t=>t.type === 'expense').sort((a,b) => b.amount - a.amount)[0];
+
+                    const largestIncomeTx = txsInPeriod.filter(t => t.type === 'income').sort((a, b) => b.amount - a.amount)[0];
+                    const largestExpenseTx = txsInPeriod.filter(t => t.type === 'expense').sort((a, b) => b.amount - a.amount)[0];
 
                     const incomeByCategory = {}, expenseByCategory = {};
                     txsInPeriod.forEach(tx => {
                         const category = getCategoryById(tx.category);
                         const categoryName = `${category.icon || ''} ${category.name}`;
                         if (tx.type === 'income' && !['internal-transfer-in', 'exchange-in', 'debt-received', 'debt-collected'].includes(tx.category)) {
-                             incomeByCategory[categoryName] = (incomeByCategory[categoryName] || 0) + tx.amount;
+                            incomeByCategory[categoryName] = (incomeByCategory[categoryName] || 0) + tx.amount;
                         } else if (tx.type === 'expense' && !['internal-transfer-out', 'exchange-out', 'debt-given', 'debt-paid'].includes(tx.category)) {
-                             expenseByCategory[categoryName] = (expenseByCategory[categoryName] || 0) + tx.amount;
+                            expenseByCategory[categoryName] = (expenseByCategory[categoryName] || 0) + tx.amount;
                         }
                     });
 
@@ -2540,15 +2715,15 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                                     widths: ['*', '*', '*', '*'],
                                     body: [
                                         [{ text: formatPdfCurrency(openingBalance, activeCurrency), style: 'summaryValue' }, { text: processBidiText('الرصيد الافتتاحي'), style: 'summaryLabel' },
-                                         { text: formatPdfCurrency(actualIncome, activeCurrency), style: ['summaryValue', 'profit'] }, { text: processBidiText('الدخل الفعلي'), style: 'summaryLabel' }],
+                                        { text: formatPdfCurrency(actualIncome, activeCurrency), style: ['summaryValue', 'profit'] }, { text: processBidiText('الدخل الفعلي'), style: 'summaryLabel' }],
                                         [{ text: formatPdfCurrency(closingBalance, activeCurrency), style: ['summaryValue', 'closingBalance'] }, { text: processBidiText('الرصيد الختامي'), style: 'summaryLabel', bold: true },
-                                         { text: formatPdfCurrency(actualExpense, activeCurrency), style: ['summaryValue', 'loss'] }, { text: processBidiText('المصروف الفعلي'), style: 'summaryLabel' }],
-                                        [{text: ''}, {text: ''}, { text: formatPdfCurrency(netFlow, activeCurrency), style: ['summaryValue', netFlow >= 0 ? 'profit' : 'loss'] }, { text: processBidiText('صافي التدفق الفعلي'), style: 'summaryLabel' }]
+                                        { text: formatPdfCurrency(actualExpense, activeCurrency), style: ['summaryValue', 'loss'] }, { text: processBidiText('المصروف الفعلي'), style: 'summaryLabel' }],
+                                        [{ text: '' }, { text: '' }, { text: formatPdfCurrency(netFlow, activeCurrency), style: ['summaryValue', netFlow >= 0 ? 'profit' : 'loss'] }, { text: processBidiText('صافي التدفق الفعلي'), style: 'summaryLabel' }]
                                     ]
                                 }, layout: 'noBorders'
                             },
                             // KPIs and Debts Section
-                             {
+                            {
                                 columns: [
                                     {
                                         width: '*',
@@ -2556,9 +2731,9 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                                             { text: processBidiText('مؤشرات الأداء'), style: 'sectionHeader' },
                                             {
                                                 ul: [
-                                                    processBidiText(`عدد عمليات الدخل: ${txsInPeriod.filter(t=>t.type === 'income').length}`),
+                                                    processBidiText(`عدد عمليات الدخل: ${txsInPeriod.filter(t => t.type === 'income').length}`),
                                                     processBidiText(`أكبر عملية دخل: ${formatPdfCurrency(largestIncomeTx?.amount || 0, activeCurrency)}`),
-                                                    processBidiText(`عدد عمليات الصرف: ${txsInPeriod.filter(t=>t.type === 'expense').length}`),
+                                                    processBidiText(`عدد عمليات الصرف: ${txsInPeriod.filter(t => t.type === 'expense').length}`),
                                                     processBidiText(`أكبر عملية صرف: ${formatPdfCurrency(largestExpenseTx?.amount || 0, activeCurrency)}`)
                                                 ]
                                             }
