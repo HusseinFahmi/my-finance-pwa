@@ -1337,13 +1337,17 @@
                    <button class="delete-btn text-gray-400 hover:text-red-500" data-id="${tx.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                 </div>` : '';
 
+                // === THIS IS THE FIX (Display Time) ===
+                const dateTime = tx.timestamp ? dayjs(tx.timestamp).format('D MMMM YYYY, h:mm A') : dayjs(tx.date).format('dddd, D MMMM YYYY');
+                // =====================================
+
                 return `
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 flex items-center space-x-4 space-x-reverse">
                     <div class="text-3xl">${category.icon}</div>
                     <div class="flex-grow">
                         <p class="font-bold">${category.name}</p>
                         <p class="text-sm text-gray-500 dark:text-gray-400">${tx.notes || 'لا توجد ملاحظات'}</p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500">${dayjs(tx.date).format('dddd, D MMMM YYYY')} - ${account ? account.name : 'حساب محذوف'}</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">${dateTime} - ${account ? account.name : 'حساب محذوف'}</p>
                     </div>
                     <div class="text-left flex-shrink-0">
                         <p class="font-bold text-lg ${amountColor}">${sign} ${formatCurrency(tx.amount, account?.currency || '')}</p>
@@ -1361,27 +1365,32 @@
 
                 let statusHTML = isPaid
                     ? `<span class="text-xs font-bold text-white bg-gray-500 px-2 py-1 rounded-full">مسدد بالكامل</span>`
-                    : `<p class="text-lg font-bold ${amountColor}">${formatCurrency(d.amount, account?.currency || '')}</p>`;
+                    : `<p class="font-bold text-lg ${amountColor}">${formatCurrency(d.amount, account?.currency || '')}</p>`;
 
                 const buttonsHTML = !isPaid ? `
     <div class="flex items-center space-x-1 space-x-reverse">
-        <button class="mark-paid-btn text-xs px-3 py-1 rounded-full ${isLent ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} dark:bg-opacity-20 hover:bg-opacity-80" data-id="${d.id}">${isLent ? 'تحصيل' : 'سداد'}</button>
+        <button class="mark-paid-btn text-xs px-3 py-1 rounded-full font-semibold text-white ${isLent ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}" data-id="${d.id}">${isLent ? 'تحصيل' : 'سداد'}</button>
         <button class="convert-currency-btn text-gray-400 hover:text-blue-500" data-id="${d.id}" title="تحويل عملة الدين">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.414L11 10.586V6z" clip-rule="evenodd" /><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" transform="rotate(45 10 10)"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor"><path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 7H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 13H12z" /></svg>
         </button>
         <button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}" title="حذف الدين"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
     </div>` : `<button class="delete-debt-btn text-gray-400 hover:text-red-500" data-id="${d.id}"><svg class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
 
                 const notesHTML = d.notes ? `<p class="text-sm text-gray-500 dark:text-gray-400 mt-1 italic">"${d.notes}"</p>` : '';
+                const originalAmountHTML = d.amount < (d.originalAmount || d.amount) ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">المبلغ الأصلي: ${formatCurrency(d.originalAmount, account?.currency || '')}</p>` : '';
+
+                // === THIS IS THE FIX (Display Time) ===
+                const dateTime = d.timestamp ? dayjs(d.timestamp).format('D MMMM YYYY, h:mm A') : dayjs(d.date).format('D MMMM YYYY');
+                // =====================================
 
                 return `
     <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-sm flex items-start justify-between ${isPaid ? 'opacity-60' : ''}">
         <div>
             <p class="font-bold text-lg">${d.person}</p>
             ${statusHTML}
-            ${!isPaid && d.amount < (d.originalAmount || d.amount) ? `<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">المبلغ الأصلي: ${formatCurrency(d.originalAmount, account?.currency || '')}</p>` : ''}
+            ${originalAmountHTML}
             ${notesHTML}
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${dayjs(d.date).format('D MMMM YYYY')}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">${dateTime}</p>
         </div>
         <div class="flex flex-col items-end space-y-2">
             ${buttonsHTML}
@@ -2150,150 +2159,529 @@
 
 
 
+
             async function handlePrintDebtReport() {
-                const processBidiText = (text) => {
-                    if (typeof text !== 'string') text = String(text);
-                    return /[\u0600-\u06FF]/.test(text) ? text.split(' ').reverse().join(' ') : text;
+                // ===== Helpers =====
+                const formatNumber =
+                    typeof window.formatNumber === "function"
+                        ? window.formatNumber
+                        : (n) =>
+                            Number(n || 0).toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                            });
+
+                // ===== علامات اتجاه =====
+                const ALM = "\u061C";      // Arabic Letter Mark
+                const LRM = "\u200E";      // Left-to-Right Mark (مدعوم ولا يظهر كمربعات)
+
+                // تثبيت الأقواس داخل العربية
+                const fixParens = (s) =>
+                    String(s).replace(/\(/g, ALM + "(").replace(/\)/g, ")" + ALM);
+
+                // عرض آمن LTR (تواريخ/رموز عملة) — بدون مربعات
+                const ltr = (s) => `${LRM}${s}${LRM}`;
+
+                // ===== Fonts =====
+                pdfMake.fonts = {
+                    Amiri: { normal: "Amiri-Regular.ttf", bold: "Amiri-Bold.ttf" },
                 };
 
-                pdfMake.fonts = { Amiri: { normal: 'Amiri-Regular.ttf', bold: 'Amiri-Bold.ttf' } };
+                // ===== Inputs =====
+                const personFilter = document.getElementById("debt-report-person").value;
+                const startDate = document.getElementById("debt-report-start-date").value;
+                const endDate = document.getElementById("debt-report-end-date").value;
+                const currency = document
+                    .querySelector(".debt-currency-tab.bg-blue-500")
+                    ?.dataset.currency;
 
-                const personFilter = document.getElementById('debt-report-person').value;
-                const startDate = document.getElementById('debt-report-start-date').value;
-                const endDate = document.getElementById('debt-report-end-date').value;
-                const currency = document.querySelector('.debt-currency-tab.bg-blue-500')?.dataset.currency;
+                if (!currency)
+                    return Swal.fire(
+                        processBidiText("خطأ"),
+                        processBidiText("الرجاء تحديد عملة من التبويبات أولاً."),
+                        "error"
+                    );
 
-                if (!currency) return Swal.fire('خطأ', 'الرجاء تحديد عملة من التبويبات أولاً.', 'error');
-                Swal.fire({ title: 'جاري إعداد الكشف...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                Swal.fire({
+                    title: processBidiText("جاري إعداد التقرير..."),
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading(),
+                });
 
-                // Define Debit (مدين) and Credit (دائن) from our perspective
-                // DEBIT: The other person's debt to us increases, or our debt to them decreases.
-                // CREDIT: The other person's debt to us decreases, or our debt to them increases.
+                // ===== 1) DATA =====
                 const allEvents = [];
-
-                // 1. Get relevant debts and transactions
-                const relevantDebts = state.debts.filter(d => {
+                const relevantDebts = state.debts.filter((d) => {
                     const account = getAccountById(d.accountId);
-                    return account && account.currency === currency && (personFilter === 'all' || d.person === personFilter);
+                    return (
+                        account &&
+                        account.currency === currency &&
+                        (personFilter === "all" || d.person === personFilter)
+                    );
                 });
 
-                const relevantTransactions = state.transactions.filter(tx => {
+                const relevantTransactions = state.transactions.filter((tx) => {
                     const account = getAccountById(tx.accountId);
-                    if (!account || account.currency !== currency || !['debt-paid', 'debt-collected'].includes(tx.category)) return false;
-                    const personInNote = tx.notes.includes(personFilter);
-                    return (personFilter === 'all' || personInNote);
+                    if (
+                        !account ||
+                        account.currency !== currency ||
+                        !["debt-paid", "debt-collected"].includes(tx.category)
+                    )
+                        return false;
+                    const personInNote = (tx.notes || "")
+                        .toLowerCase()
+                        .includes((personFilter || "").toLowerCase());
+                    return personFilter === "all" || personInNote;
                 });
 
-                // Add original debts to events
-                relevantDebts.forEach(debt => {
-                    const event = {
-                        date: debt.date,
-                        timestamp: debt.timestamp || debt.date,
-                        person: debt.person,
-                        description: debt.notes ? `دين أولي - ${debt.notes}` : 'دين أولي',
-                        debit: 0,
-                        credit: 0
-                    };
-                    if (debt.type === 'lent') event.debit = debt.originalAmount; // They owe us
-                    else event.credit = debt.originalAmount; // We owe them
-                    allEvents.push(event);
-                });
+                relevantDebts.forEach((d) =>
+                    allEvents.push({
+                        timestamp: d.timestamp || d.date,
+                        person: d.person,
+                        description: `دين أولي: ${d.notes || ""}`,
+                        debit: d.type === "lent" ? d.originalAmount : 0,
+                        credit: d.type === "borrowed" ? d.originalAmount : 0,
+                    })
+                );
 
-                // Add payment transactions to events
-                relevantTransactions.forEach(tx => {
-                    const event = {
-                        date: tx.date,
+                relevantTransactions.forEach((tx) => {
+                    let eventPerson = personFilter;
+                    if (personFilter === "all") {
+                        const debtPersonMatch = state.debts.find((d) =>
+                            (tx.notes || "")
+                                .toLowerCase()
+                                .includes((d.person || "").toLowerCase())
+                        );
+                        eventPerson = debtPersonMatch ? debtPersonMatch.person : "غير محدد";
+                    }
+                    allEvents.push({
                         timestamp: tx.timestamp || tx.date,
-                        person: personFilter, // Assuming person is in the note
+                        person: eventPerson,
                         description: tx.notes,
-                        debit: 0,
-                        credit: 0
-                    };
-                    if (tx.category === 'debt-paid') event.debit = tx.amount; // We paid them back
-                    else event.credit = tx.amount; // They paid us back
-                    allEvents.push(event);
+                        debit: tx.category === "debt-paid" ? tx.amount : 0,
+                        credit: tx.category === "debt-collected" ? tx.amount : 0,
+                    });
                 });
 
-                // Filter events by date range
-                const eventsInPeriod = allEvents.filter(e => dayjs(e.date).isBetween(startDate, endDate, null, '[]'));
+                const eventsInPeriod = allEvents.filter((e) =>
+                    dayjs(e.timestamp).isBetween(
+                        startDate,
+                        dayjs(endDate).endOf("day"),
+                        null,
+                        "[]"
+                    )
+                );
 
                 if (eventsInPeriod.length === 0) {
                     Swal.close();
-                    return Swal.fire('لا توجد بيانات', 'لم يتم العثور على حركات ديون تطابق معايير البحث.', 'info');
+                    return Swal.fire(
+                        processBidiText("لا توجد بيانات"),
+                        processBidiText("لم يتم العثور على حركات ديون تطابق معايير البحث."),
+                        "info"
+                    );
                 }
 
-                // Calculate opening balance
-                let openingBalance = 0;
-                allEvents.filter(e => dayjs(e.date).isBefore(startDate)).forEach(e => {
-                    openingBalance += e.debit - e.credit;
+                // ===== 2) CALCS =====
+                const openingBalance = allEvents
+                    .filter((e) => dayjs(e.timestamp).isBefore(startDate))
+                    .reduce((bal, e) => bal + e.debit - e.credit, 0);
+
+                const totalDebit = eventsInPeriod.reduce((sum, e) => sum + e.debit, 0);
+                const totalCredit = eventsInPeriod.reduce((sum, e) => sum + e.credit, 0);
+                const finalBalance = openingBalance + totalDebit - totalCredit;
+
+                // ترتيب زمني صحيح
+                eventsInPeriod.sort((a, b) => dayjs(a.timestamp).valueOf() - dayjs(b.timestamp).valueOf());
+
+                // رصيد تراكمي
+                let runningBalance = openingBalance;
+                const balanceSeries = eventsInPeriod.map((e) => {
+                    runningBalance += e.debit - e.credit;
+                    return { t: dayjs(e.timestamp).format("YYYY-MM-DD"), bal: runningBalance };
                 });
 
-                // Sort and process table rows
-                eventsInPeriod.sort((a, b) => (new Date(a.timestamp)) - (new Date(b.timestamp)));
+                const debitTransactions = eventsInPeriod.filter((e) => e.debit > 0);
+                const creditTransactions = eventsInPeriod.filter((e) => e.credit > 0);
+                const largestDebit = debitTransactions.length ? Math.max(...debitTransactions.map((e) => e.debit)) : 0;
+                const largestCredit = creditTransactions.length ? Math.max(...creditTransactions.map((e) => e.credit)) : 0;
 
-                let currentBalance = openingBalance;
-                const tableRows = eventsInPeriod.map(event => {
-                    currentBalance += event.debit - event.credit;
+                // ===== 3) CHARTS =====
+                const makeBase64Chart = async (config, w = 360, h = 210) => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx || typeof Chart === "undefined") return null;
+
+                    const chart = new Chart(ctx, {
+                        ...config,
+                        options: {
+                            responsive: false,
+                            animation: false,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: true } },
+                            ...(config.options || {}),
+                        },
+                    });
+                    chart.update();
+                    await new Promise(requestAnimationFrame);
+                    const b64 = chart.toBase64Image();
+                    chart.destroy();
+                    return b64;
+                };
+
+                const barB64 = await makeBase64Chart(
+                    {
+                        type: "bar",
+                        data: {
+                            labels: [processBidiText("إجمالي الدائن"), processBidiText("إجمالي المدين")],
+                            datasets: [
+                                {
+                                    label: processBidiText(`بالـ ${String(currency).toUpperCase()}`),
+                                    data: [totalCredit, totalDebit],
+                                    backgroundColor: ["#27ae60", "#c0392b"],
+                                    borderRadius: 6,
+                                },
+                            ],
+                        },
+                        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+                    },
+                    360,
+                    210
+                );
+
+                const lineB64 = await makeBase64Chart(
+                    {
+                        type: "line",
+                        data: {
+                            labels: balanceSeries.map((p) => p.t),
+                            datasets: [
+                                {
+                                    label: processBidiText("الرصيد التراكمي"),
+                                    data: balanceSeries.map((p) => p.bal),
+                                    tension: 0.25,
+                                    fill: false,
+                                },
+                            ],
+                        },
+                        options: { scales: { y: { beginAtZero: false } } },
+                    },
+                    480,
+                    210
+                );
+
+                const donutB64 = await makeBase64Chart(
+                    {
+                        type: "doughnut",
+                        data: {
+                            labels: [processBidiText("دائن"), processBidiText("مدين")],
+                            datasets: [{ label: processBidiText("النسب"), data: [totalCredit, totalDebit] }],
+                        },
+                        options: { plugins: { legend: { position: "bottom" } } },
+                    },
+                    260,
+                    200
+                );
+
+                // ===== 4) LEDGER TABLE =====
+                let rb = openingBalance;
+                const ledgerRows = eventsInPeriod.map((event) => {
+                    rb += event.debit - event.credit;
                     return [
-                        { text: currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), alignment: 'center' },
-                        { text: event.credit > 0 ? event.credit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-', alignment: 'center' },
-                        { text: event.debit > 0 ? event.debit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-', alignment: 'center' },
-                        { text: processBidiText(event.description), alignment: 'right' },
-                        { text: personFilter === 'all' ? processBidiText(event.person) : event.date, alignment: 'center' }
+                        { text: formatNumber(rb), alignment: "center" },
+                        {
+                            text: event.credit > 0 ? formatNumber(event.credit) : "-",
+                            alignment: "center",
+                        },
+                        {
+                            text: event.debit > 0 ? formatNumber(event.debit) : "-",
+                            alignment: "center",
+                        },
+                        {
+                            text: processBidiText(fixParens(String(event.description || ""))),
+                            alignment: "right",
+                        },
+                        {
+                            text: ltr(dayjs(event.timestamp).format("YYYY-MM-DD HH:mm")),
+                            alignment: "center",
+                            noWrap: true,                      // لا يكسر السطر
+                            margin: [0, 1, 0, 1],
+                        },
                     ];
                 });
 
-                // Add opening balance row at the start
-                tableRows.unshift([
-                    { text: openingBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), alignment: 'center', bold: true },
-                    { text: '', alignment: 'center' },
-                    { text: '', alignment: 'center' },
-                    { text: processBidiText('رصيد افتتاحي'), alignment: 'right', bold: true },
-                    { text: startDate, alignment: 'center', bold: true }
-                ]);
-
-                const finalBalance = currentBalance;
-
-                const docDefinition = {
-                    content: [
-                        { text: processBidiText('كشف حساب الديون التفصيلي'), style: 'header' },
-                        { text: processBidiText(`للشخص: ${personFilter === 'all' ? 'الكل' : personFilter} | العملة: ${currency}`), style: 'subheader' },
-                        { text: processBidiText(`الفترة: من ${startDate} إلى ${endDate}`), style: 'subheader' },
-                        {
-                            style: 'summaryCard',
-                            table: {
-                                widths: ['*', '*'],
-                                body: [
-                                    [{ text: `${finalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`, style: ['summaryValue', finalBalance >= 0 ? 'profit' : 'loss'] }, { text: processBidiText(finalBalance >= 0 ? 'الرصيد النهائي (لصالحك)' : 'الرصيد النهائي (عليك)'), style: 'summaryLabel', bold: true }]
-                                ]
-                            }, layout: 'noBorders'
-                        },
-                        {
-                            table: {
-                                headerRows: 1, widths: ['auto', 'auto', 'auto', '*', 'auto'],
-                                body: [
-                                    [{ text: processBidiText('الرصيد'), style: 'tableHeader' }, { text: processBidiText('دائن'), style: 'tableHeader' }, { text: processBidiText('مدين'), style: 'tableHeader' }, { text: processBidiText('البيان'), style: 'tableHeader' }, { text: processBidiText(personFilter === 'all' ? 'الشخص' : 'التاريخ'), style: 'tableHeader' }],
-                                    ...tableRows
-                                ]
-                            }, layout: 'lightHorizontalLines'
-                        }
-                    ],
-                    styles: {
-                        header: { fontSize: 22, bold: true, alignment: 'center', margin: [0, 0, 0, 5] },
-                        subheader: { fontSize: 12, alignment: 'center', color: 'gray', margin: [0, 0, 0, 15] },
-                        tableHeader: { bold: true, alignment: 'center', fillColor: '#34495e', color: 'white', fontSize: 11 },
-                        summaryCard: { margin: [0, 5, 0, 15], fillColor: '#f8f9f9' },
-                        summaryLabel: { alignment: 'right', color: '#34495e', margin: [0, 4, 0, 4] },
-                        summaryValue: { fontSize: 16, bold: true, alignment: 'center' },
-                        profit: { color: '#27ae60' },
-                        loss: { color: '#c0392b' },
+                const openingRow = [
+                    {
+                        text: formatNumber(openingBalance),
+                        alignment: "center",
+                        bold: true,
+                        fillColor: "#F1F2F6",
                     },
-                    defaultStyle: { font: 'Amiri', alignment: 'right', fontSize: 10 }
+                    { text: "-", alignment: "center", fillColor: "#F1F2F6" },
+                    { text: "-", alignment: "center", fillColor: "#F1F2F6" },
+                    { text: processBidiText("رصيد افتتاحي"), alignment: "right", bold: true, fillColor: "#F1F2F6" },
+                    { text: ltr(dayjs(startDate).format("YYYY-MM-DD") + " 00:00"), alignment: "center", bold: true, fillColor: "#F1F2F6", noWrap: true },
+                ];
+
+                const totalsRow = [
+                    {
+                        text: formatNumber(finalBalance),
+                        alignment: "center",
+                        bold: true,
+                        fillColor: "#ECF9FF",
+                    },
+                    {
+                        text: formatNumber(totalCredit),
+                        alignment: "center",
+                        bold: true,
+                        fillColor: "#ECF9FF",
+                        color: "#27ae60",
+                    },
+                    {
+                        text: formatNumber(totalDebit),
+                        alignment: "center",
+                        bold: true,
+                        fillColor: "#ECF9FF",
+                        color: "#c0392b",
+                    },
+                    { text: processBidiText("الإجمالي"), alignment: "right", bold: true, fillColor: "#ECF9FF" },
+                    { text: ltr(dayjs(endDate).format("YYYY-MM-DD") + " 23:59"), alignment: "center", bold: true, fillColor: "#ECF9FF", noWrap: true },
+                ];
+
+                // ===== 5) PDF =====
+                const docDefinition = {
+                    pageMargins: [36, 36, 36, 42],
+
+                    content: [
+                        { text: processBidiText("كشف حساب الديون"), style: "header", alignment: "center" },
+
+                        // رأس التقرير — زيدنا المسافة بين الأجزاء
+                        {
+                            columns: [
+                                {
+                                    width: "*",
+                                    alignment: "right",
+                                    fontSize: 12,
+                                    bold: true,
+                                    margin: [0, 2, 0, 0],
+                                    text: [
+                                        { text: processBidiText("الشخص: ") },
+                                        { text: processBidiText(personFilter === "all" ? "الكل" : personFilter) },
+                                    ],
+                                },
+                                {
+                                    width: "*",
+                                    alignment: "center",
+                                    margin: [0, 2, 0, 0],
+                                    text: [
+                                        { text: processBidiText("الفترة: ") },
+                                        { text: ltr(dayjs(startDate).format("YYYY-MM-DD")) },
+                                        { text: processBidiText(" إلى ") },
+                                        { text: ltr(dayjs(endDate).format("YYYY-MM-DD")) },
+                                    ],
+                                },
+                                {
+                                    width: "*",
+                                    alignment: "left",
+                                    margin: [0, 2, 0, 0],
+                                    text: [
+                                        { text: processBidiText("العملة: ") },
+                                        { text: ltr(String(currency).toUpperCase()) },
+                                    ],
+                                },
+                            ],
+                            columnGap: 48,        // مسافة أكبر بين الأجزاء
+                            margin: [0, 0, 0, 20],
+                        },
+
+                        { text: processBidiText("الملخص المالي"), style: "sectionHeader", margin: [0, 0, 0, 8] },
+                        {
+                            table: {
+                                widths: ["*", "*", "*", "*"],
+                                body: [
+                                    [
+                                        { text: processBidiText("الرصيد الافتتاحي"), style: "summaryLabel" },
+                                        { text: processBidiText(fixParens("إجمالي الدائن (له)")), style: "summaryLabel" },
+                                        { text: processBidiText(fixParens("إجمالي المدين (عليه)")), style: "summaryLabel" },
+                                        { text: processBidiText("الرصيد الختامي"), style: "summaryLabel" },
+                                    ],
+                                    [
+                                        { text: formatNumber(openingBalance), style: "summaryValue" },
+                                        { text: formatNumber(totalCredit), style: "summaryValueCredit" },
+                                        { text: formatNumber(totalDebit), style: "summaryValueDebit" },
+                                        { text: formatNumber(finalBalance), style: "summaryValueFinal" },
+                                    ],
+                                ],
+                            },
+                            layout: "noBorders",
+                            margin: [0, 0, 0, 10],
+                        },
+
+                        {
+                            columns: [
+                                barB64
+                                    ? {
+                                        width: "50%",
+                                        stack: [
+                                            { text: processBidiText("مقارنة الحركات"), style: "sectionSubHeader" },
+                                            { image: barB64, width: 300, margin: [0, 6, 0, 0], alignment: "center" },
+                                        ],
+                                    }
+                                    : { width: "50%", text: "" },
+                                donutB64
+                                    ? {
+                                        width: "50%",
+                                        stack: [
+                                            { text: processBidiText("نِسب مدين/دائن"), style: "sectionSubHeader" },
+                                            { image: donutB64, width: 220, margin: [0, 18, 0, 0], alignment: "center" },
+                                        ],
+                                    }
+                                    : { width: "50%", text: "" },
+                            ],
+                            columnGap: 32,
+                            margin: [0, 0, 0, 16],
+                        },
+
+                        lineB64
+                            ? { text: processBidiText("الرصيد التراكمي عبر الزمن"), style: "sectionSubHeader", margin: [0, 0, 0, 6] }
+                            : null,
+                        lineB64
+                            ? { image: lineB64, width: 440, alignment: "center", margin: [0, 0, 0, 18] }
+                            : null,
+
+                        // مؤشرات سريعة (2 في كل عمود) + فراغ كافٍ
+                        { text: processBidiText("مؤشرات سريعة"), style: "sectionSubHeader", margin: [0, 0, 0, 6] },
+                        {
+                            columns: [
+                                {
+                                    width: "50%",
+                                    stack: [
+                                        {
+                                            table: {
+                                                widths: ["*", "auto"],
+                                                body: [
+                                                    [
+                                                        { text: processBidiText("عدد الحركات المدينة"), alignment: "right" },
+                                                        { text: debitTransactions.length, bold: true },
+                                                    ],
+                                                    [
+                                                        { text: processBidiText("أكبر حركة مدينة"), alignment: "right" },
+                                                        { text: formatNumber(largestDebit), bold: true, color: "#c0392b" },
+                                                    ],
+                                                ],
+                                            },
+                                            layout: "noBorders",
+                                            margin: [0, 0, 0, 8],
+                                        },
+                                    ],
+                                },
+                                {
+                                    width: "50%",
+                                    stack: [
+                                        {
+                                            table: {
+                                                widths: ["*", "auto"],
+                                                body: [
+                                                    [
+                                                        { text: processBidiText("عدد الحركات الدائنة"), alignment: "right" },
+                                                        { text: creditTransactions.length, bold: true },
+                                                    ],
+                                                    [
+                                                        { text: processBidiText("أكبر حركة دائنة"), alignment: "right" },
+                                                        { text: formatNumber(largestCredit), bold: true, color: "#27ae60" },
+                                                    ],
+                                                ],
+                                            },
+                                            layout: "noBorders",
+                                            margin: [0, 0, 0, 8],
+                                        },
+                                    ],
+                                },
+                            ],
+                            columnGap: 60,
+                            margin: [0, 0, 0, 18],
+                            pageBreak: "after",
+                        },
+
+                        { text: processBidiText("كشف الحركات التفصيلي"), style: "sectionHeader" },
+                        {
+                            table: {
+                                headerRows: 1,
+                                widths: ["auto", "auto", "auto", "*", "auto"],
+                                body: [
+                                    [
+                                        { text: processBidiText("الرصيد"), style: "tableHeader" },
+                                        { text: processBidiText(fixParens("دائن (له)")), style: "tableHeader" },
+                                        { text: processBidiText(fixParens("مدين (عليه)")), style: "tableHeader" },
+                                        { text: processBidiText("البيان"), style: "tableHeader" },
+                                        { text: processBidiText("التاريخ والوقت"), style: "tableHeader" },
+                                    ],
+                                    openingRow,
+                                    ...ledgerRows,
+                                    totalsRow,
+                                ],
+                            },
+                            layout: {
+                                hLineWidth: (i, node) => (i === 0 || i === node.table.body.length ? 1 : 0.5),
+                                vLineWidth: () => 0.5,
+                                hLineColor: () => "#D0D5DD",
+                                vLineColor: () => "#D0D5DD",
+                                fillColor: (rowIndex, node) => {
+                                    if (rowIndex === 0) return "#34495e";            // Header
+                                    if (rowIndex === 1) return "#F1F2F6";            // Opening
+                                    if (rowIndex === node.table.body.length - 1) return "#ECF9FF"; // Totals
+                                    return rowIndex % 2 ? "#FAFAFA" : null;          // Zebra
+                                },
+                                paddingLeft: () => 6,
+                                paddingRight: () => 6,
+                                paddingTop: () => 5,
+                                paddingBottom: () => 5,
+                            },
+                            margin: [0, 6, 0, 0],
+                        },
+                    ].filter(Boolean),
+
+                    footer: (currentPage, pageCount) => ({
+                        text: processBidiText(`${currentPage.toString()} / ${pageCount}`),
+                        alignment: "center",
+                        style: "footer",
+                    }),
+
+                    styles: {
+                        header: { fontSize: 24, bold: true, alignment: "right", margin: [0, 0, 0, 8], color: "#2c3e50" },
+                        subheader: { fontSize: 11, alignment: "right", color: "#7f8c8d" },
+                        sectionHeader: { fontSize: 14, bold: true, margin: [0, 12, 0, 8], color: "#2980b9" },
+                        sectionSubHeader: { fontSize: 12, bold: true, margin: [0, 6, 0, 6], color: "#2980b9" },
+                        summaryLabel: { alignment: "center", color: "#34495e", fontSize: 10 },
+                        summaryValue: { fontSize: 14, bold: true, alignment: "center", color: "#34495e" },
+                        summaryValueCredit: { fontSize: 14, bold: true, alignment: "center", color: "#27ae60" },
+                        summaryValueDebit: { fontSize: 14, bold: true, alignment: "center", color: "#c0392b" },
+                        summaryValueFinal: { fontSize: 16, bold: true, alignment: "center", color: finalBalance >= 0 ? "#27ae60" : "#c0392b" },
+                        tableHeader: { bold: true, alignment: "center", color: "white", fontSize: 10 },
+                        footer: { fontSize: 8, margin: [0, 10], color: "gray" },
+                    },
+
+                    defaultStyle: { font: "Amiri", alignment: "right", fontSize: 10, color: "#34495e" },
                 };
 
-                pdfMake.createPdf(docDefinition).download(`Debt-Statement-${personFilter}-${currency}-${dayjs().format('YYYY-MM-DD')}.pdf`);
+                pdfMake
+                    .createPdf(docDefinition)
+                    .download(
+                        `Debt-Statement-${personFilter}-${String(currency).toUpperCase()}-${dayjs().format("YYYY-MM-DD")}.pdf`
+                    );
                 Swal.close();
             }
+
+            // استخدم هذه الدالة للنصوص فقط (لا تُستخدم مع التواريخ أو ltr())
+            const processBidiText = (text) => {
+                if (typeof text !== 'string') text = String(text);
+                return /[\u0600-\u06FF]/.test(text) ? text.split(' ').reverse().join(' ') : text;
+            };
+
+
+
+
+
+
 
             async function handleMarkDebtAsPaid(id) {
                 const debt = state.debts.find(d => d.id === id);
@@ -2616,22 +3004,24 @@
                     }
                 }
 
+                // === THIS IS THE FIX (Save Date & Time) ===
+                const transactionDate = document.getElementById('transaction-date').value;
+                const newTimestamp = dayjs(transactionDate).toISOString();
+                // ============================================
+
                 const newTx = {
                     type,
                     accountId,
                     amount,
                     category: document.getElementById('transaction-category').value,
-                    date: document.getElementById('transaction-date').value,
+                    date: transactionDate,
                     notes: document.getElementById('transaction-notes').value.trim(),
-                    timestamp: new Date().toISOString() // Add timestamp for accurate sorting
+                    timestamp: newTimestamp
                 };
 
                 if (id) {
                     const oldTx = state.transactions.find(t => t.id === id);
-                    // Don't update timestamp on edit to preserve original order unless date changes
-                    if (oldTx.date !== newTx.date) {
-                        oldTx.timestamp = new Date(newTx.date).toISOString();
-                    }
+                    newTx.id = id;
                     Object.assign(oldTx, newTx);
                 }
                 else {
@@ -2654,6 +3044,8 @@
                 const notes = document.getElementById('debt-notes').value.trim();
 
                 if (id) {
+                    // Note: Editing only person and notes is allowed for now to keep things simple.
+                    // To edit amount/date, it's better to delete and re-create to avoid accounting issues.
                     const index = state.debts.findIndex(d => d.id === id);
                     if (index > -1) {
                         state.debts[index].person = person;
@@ -2672,7 +3064,10 @@
                         }
                     }
 
-                    const timestamp = new Date().toISOString();
+                    // === THIS IS THE FIX (Save Date & Time) ===
+                    const timestamp = dayjs(date).toISOString();
+                    // ==========================================
+
                     const newDebt = {
                         id: generateId(), type, accountId, amount, originalAmount: amount, person, date, notes, status: 'unpaid', timestamp
                     };
@@ -3089,7 +3484,10 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                 form.reset();
                 document.getElementById('debt-modal-title').textContent = 'إضافة دين جديد';
                 document.getElementById('debt-id').value = '';
-                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name}</option>`).join('');
+
+                const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
+                // ============================
+
                 document.getElementById('debt-account').innerHTML = accountOptions;
                 document.getElementById('debt-date').value = dayjs().format('YYYY-MM-DD');
                 debtModal.classList.remove('hidden');
