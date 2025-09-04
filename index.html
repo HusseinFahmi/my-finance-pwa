@@ -415,6 +415,48 @@
             const getUniqueCurrencies = () => [...new Set(state.settings.accounts.map(acc => acc.currency))];
             const formatNumber = (amount) => new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
+                        // START: دوال جديدة لتنسيق الأرقام
+            const parseFormattedNumber = (str) => {
+                if (typeof str !== 'string') return parseFloat(str || 0);
+                return parseFloat(str.replace(/,/g, '') || '0');
+            };
+
+            const formatNumberInput = (inputElement) => {
+                if (!inputElement) return;
+
+                // 1. احصل على القيمة وموضع المؤشر الحالي
+                let value = inputElement.value;
+                let selectionStart = inputElement.selectionStart;
+                let originalLength = value.length;
+
+                // 2. أزل كل شيء ليس رقمًا أو نقطة عشرية
+                let numericValue = value.replace(/[^\d.]/g, '');
+                
+                // لا تفعل شيئًا إذا كانت القيمة فارغة
+                if (numericValue === '') {
+                    inputElement.value = '';
+                    return;
+                }
+                
+                // 3. قسم الرقم إلى جزء صحيح وجزء عشري
+                const parts = numericValue.split('.');
+                const integerPart = parts[0];
+                const decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+
+                // 4. أضف الفواصل إلى الجزء الصحيح
+                const formattedIntegerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                
+                // 5. أعد تجميع الرقم وضع القيمة الجديدة في الحقل
+                const formattedValue = formattedIntegerPart + decimalPart;
+                inputElement.value = formattedValue;
+                
+                // 6. أعد حساب موضع المؤشر الجديد وحافظ عليه
+                let newLength = formattedValue.length;
+                let lengthDifference = newLength - originalLength;
+                inputElement.setSelectionRange(selectionStart + lengthDifference, selectionStart + lengthDifference);
+            };
+            // END: دوال جديدة لتنسيق الأرقام
+
             function calculateMonthlyMetrics(transactions) {
                 const metrics = {
                     actualIncome: 0,
@@ -1777,7 +1819,7 @@
                 document.getElementById('account-form')?.addEventListener('submit', handleAccountFormSubmit);
             }
 
-            function attachAccountsListeners(accountId = null) {
+                        function attachAccountsListeners(accountId = null) {
                 if (accountId) {
                     document.getElementById('back-to-accounts-btn')?.addEventListener('click', () => renderView('accounts'));
                     const refilterDetail = () => renderAccountDetailTransactions(accountId);
@@ -1800,6 +1842,23 @@
                     document.getElementById('execute-exchange-btn')?.addEventListener('click', handleExecuteExchange);
                     document.getElementById('calculate-inverse-rate-btn')?.addEventListener('click', handleCalculateInverseRate);
 
+                    // START: التعديل المطلوب
+                    // تغيير نوع الحقول وتطبيق التنسيق
+                    const internalAmountInput = document.getElementById('internal-transfer-amount');
+                    if(internalAmountInput) {
+                        internalAmountInput.type = 'text';
+                        internalAmountInput.inputMode = 'decimal';
+                        internalAmountInput.addEventListener('input', (e) => formatNumberInput(e.target));
+                    }
+                    
+                    const exchangeAmountInput = document.getElementById('exchange-from-amount');
+                    if(exchangeAmountInput) {
+                        exchangeAmountInput.type = 'text';
+                        exchangeAmountInput.inputMode = 'decimal';
+                        exchangeAmountInput.addEventListener('input', (e) => formatNumberInput(e.target));
+                    }
+                    // END: التعديل المطلوب
+
                     const fromInternalSelect = document.getElementById('internal-transfer-from');
                     const toInternalSelect = document.getElementById('internal-transfer-to');
 
@@ -1808,9 +1867,7 @@
                         const fromAccount = getAccountById(fromInternalSelect.value);
                         if (!fromAccount) return;
                         const compatibleAccounts = state.settings.accounts.filter(acc => acc.currency === fromAccount.currency && acc.id !== fromAccount.id);
-                        // === THIS IS THE FIX for the dynamic dropdown ===
                         toInternalSelect.innerHTML = compatibleAccounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
-                        // ===============================================
                         toInternalSelect.disabled = compatibleAccounts.length === 0;
                     };
                     fromInternalSelect?.addEventListener('change', updateInternalToAccountOptions);
@@ -1830,7 +1887,9 @@
                             return;
                         }
 
-                        const amount = parseFloat(document.getElementById('exchange-from-amount')?.value) || 0;
+                        // START: التعديل المطلوب هنا أيضًا
+                        const amount = parseFormattedNumber(document.getElementById('exchange-from-amount')?.value);
+                        // END: التعديل المطلوب هنا أيضًا
                         const rate = parseFloat(document.getElementById('exchange-rate')?.value) || 0;
                         exchangeResultEl.textContent = `${formatNumber(amount * rate)} ${toAccount.currency}`;
                         rateHelperEl.textContent = `1 ${fromAccount.currency} = ? ${toAccount.currency}`;
@@ -1845,9 +1904,7 @@
 
                         const compatibleToAccounts = state.settings.accounts.filter(acc => acc.id !== fromAccount.id);
                         if (compatibleToAccounts.length > 0) {
-                            // === THIS IS THE FIX for the dynamic dropdown ===
                             exchangeToAccount.innerHTML = compatibleToAccounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
-                            // ===============================================
                             exchangeToAccount.disabled = false;
 
                             if (compatibleToAccounts.some(acc => acc.id === currentToValue)) {
@@ -1949,10 +2006,12 @@
 
 
 
-            function handleInternalTransfer() {
+                        function handleInternalTransfer() {
                 const fromId = document.getElementById('internal-transfer-from').value;
                 const toId = document.getElementById('internal-transfer-to').value;
-                const amount = parseFloat(document.getElementById('internal-transfer-amount').value);
+                // START: التعديل المطلوب
+                const amount = parseFormattedNumber(document.getElementById('internal-transfer-amount').value);
+                // END: التعديل المطلوب
                 const fromAccount = getAccountById(fromId);
                 const toAccount = getAccountById(toId);
 
@@ -1979,12 +2038,14 @@
                 });
             }
 
-            function handleExecuteExchange() {
+                        function handleExecuteExchange() {
                 const fromAccountId = document.getElementById('exchange-from-account').value;
                 const toAccountId = document.getElementById('exchange-to-account').value;
                 const fromAccount = getAccountById(fromAccountId);
                 const toAccount = getAccountById(toAccountId);
-                const fromAmount = parseFloat(document.getElementById('exchange-from-amount').value);
+                // START: التعديل المطلوب
+                const fromAmount = parseFormattedNumber(document.getElementById('exchange-from-amount').value);
+                // END: التعديل المطلوب
                 const rate = parseFloat(document.getElementById('exchange-rate').value);
                 const notes = document.getElementById('exchange-notes').value.trim();
 
@@ -2680,9 +2741,6 @@
 
 
 
-
-
-
             async function handleMarkDebtAsPaid(id) {
                 const debt = state.debts.find(d => d.id === id);
                 if (!debt) return;
@@ -2692,11 +2750,8 @@
                 const isLent = debt.type === 'lent'; // دين لك (تحصيل)
                 const actionText = isLent ? 'تحصيل' : 'سداد';
 
-                // Step 1: Select payment account (show all accounts)
                 const accountOptions = state.settings.accounts.reduce((opts, acc) => {
-                    // === THIS IS THE FIX ===
                     opts[acc.id] = `${acc.name} (${acc.currency})`;
-                    // =======================
                     return opts;
                 }, {});
 
@@ -2718,29 +2773,41 @@
                 let paymentAmount = 0;
                 let equivalentInDebtCurrency = 0;
 
-                // Step 2: Handle same vs. different currency
                 if (paymentCurrency === debtCurrency) {
-                    // --- SAME CURRENCY LOGIC (Classic flow) ---
-                    const { value: amount } = await Swal.fire({
+                    const { value } = await Swal.fire({
                         title: `مبلغ ال${actionText}`,
                         html: `المبلغ المتبقي: <b>${formatCurrency(debt.amount, debtCurrency)}</b><br>أدخل المبلغ الذي تود ${actionText}ه.`,
-                        input: 'number',
-                        inputValue: debt.amount,
+                        // START: التعديل المطلوب
+                        input: 'text',
+                        inputAttributes: { inputmode: 'decimal' },
+                        inputValue: debt.amount.toString(),
+                        didOpen: () => {
+                            const input = Swal.getInput();
+                            if(input) {
+                                formatNumberInput(input); // تنسيق القيمة الأولية
+                                input.addEventListener('input', () => formatNumberInput(input));
+                            }
+                        },
+                        // END: التعديل المطلوب
                         showCancelButton: true,
                         confirmButtonText: `تأكيد ال${actionText}`,
                         inputValidator: (value) => {
-                            if (!value || value <= 0) return 'الرجاء إدخال مبلغ صحيح!';
-                            if (value > debt.amount) return `المبلغ أكبر من الدين المتبقي!`;
-                            if (!isLent && (calculateTotals().accounts[selectedAccountId]?.balance || 0) < value) return `الرصيد في حساب (${selectedAccount.name}) غير كافٍ!`;
+                            // START: التعديل المطلوب
+                            const amount = parseFormattedNumber(value);
+                            if (!value || amount <= 0) return 'الرجاء إدخال مبلغ صحيح!';
+                            if (amount > debt.amount) return `المبلغ أكبر من الدين المتبقي!`;
+                            if (!isLent && (calculateTotals().accounts[selectedAccountId]?.balance || 0) < amount) return `الرصيد في حساب (${selectedAccount.name}) غير كافٍ!`;
+                            // END: التعديل المطلوب
                             return null;
                         }
                     });
-                    if (!amount) return;
-                    paymentAmount = parseFloat(amount);
+                    // START: التعديل المطلوب
+                    if (!value) return;
+                    paymentAmount = parseFormattedNumber(value);
+                    // END: التعديل المطلوب
                     equivalentInDebtCurrency = paymentAmount;
 
                 } else {
-                    // --- DIFFERENT CURRENCY LOGIC (New flow) ---
                     const { value: rate } = await Swal.fire({
                         title: 'سعر الصرف',
                         html: `أدخل سعر الصرف الحالي:<br><b>1 ${debtCurrency} = ؟ ${paymentCurrency}</b>`,
@@ -2755,31 +2822,45 @@
                     const exchangeRate = parseFloat(rate);
                     const remainingInPaymentCurrency = debt.amount * exchangeRate;
 
-                    const { value: amount } = await Swal.fire({
+                    const { value } = await Swal.fire({
                         title: `مبلغ ال${actionText} (بـ ${paymentCurrency})`,
                         html: `المبلغ المتبقي يعادل تقريبًا: <b>${formatCurrency(remainingInPaymentCurrency, paymentCurrency)}</b><br>أدخل المبلغ الذي ستدفعه بـ ${paymentCurrency}.`,
-                        input: 'number',
+                        // START: التعديل المطلوب
+                        input: 'text',
+                        inputAttributes: { inputmode: 'decimal' },
                         inputValue: remainingInPaymentCurrency.toFixed(2),
+                        didOpen: () => {
+                            const input = Swal.getInput();
+                            if(input) {
+                                formatNumberInput(input);
+                                input.addEventListener('input', () => formatNumberInput(input));
+                            }
+                        },
+                        // END: التعديل المطلوب
                         showCancelButton: true,
                         confirmButtonText: `تأكيد ال${actionText}`,
                         inputValidator: (value) => {
-                            if (!value || value <= 0) return 'الرجاء إدخال مبلغ صحيح!';
-                            if (value > remainingInPaymentCurrency * 1.001) return `المبلغ أكبر من الدين المتبقي!`; // 0.1% tolerance
-                            if (!isLent && (calculateTotals().accounts[selectedAccountId]?.balance || 0) < value) return `الرصيد في حساب (${selectedAccount.name}) غير كافٍ!`;
+                            // START: التعديل المطلوب
+                            const amount = parseFormattedNumber(value);
+                            if (!value || amount <= 0) return 'الرجاء إدخال مبلغ صحيح!';
+                            if (amount > remainingInPaymentCurrency * 1.001) return `المبلغ أكبر من الدين المتبقي!`; // 0.1% tolerance
+                            if (!isLent && (calculateTotals().accounts[selectedAccountId]?.balance || 0) < amount) return `الرصيد في حساب (${selectedAccount.name}) غير كافٍ!`;
+                            // END: التعديل المطلوب
                             return null;
                         }
                     });
-                    if (!amount) return;
-                    paymentAmount = parseFloat(amount);
+                     // START: التعديل المطلوب
+                    if (!value) return;
+                    paymentAmount = parseFormattedNumber(value);
+                    // END: التعديل المطلوب
                     equivalentInDebtCurrency = paymentAmount / exchangeRate;
                 }
 
-                // Step 3: Create transaction and update debt
                 state.transactions.push({
                     id: generateId(),
                     type: isLent ? 'income' : 'expense',
                     accountId: selectedAccountId,
-                    amount: paymentAmount, // The amount in the payment currency
+                    amount: paymentAmount, 
                     category: isLent ? 'debt-collected' : 'debt-paid',
                     date: dayjs().format('YYYY-MM-DD'),
                     notes: `${actionText} دين ${debt.person} (أصل الدين بـ ${debtCurrency})`,
@@ -2796,7 +2877,8 @@
                 Swal.fire('تم بنجاح!', `تم ${actionText} مبلغ ${formatCurrency(paymentAmount, paymentCurrency)} بنجاح.`, 'success');
             }
 
-            async function handleAggregatedPayment(dataset) {
+
+                        async function handleAggregatedPayment(dataset) {
                 const { type, person, totalAmount, debtIds, currency: debtCurrency } = dataset;
                 const parsedDebtIds = JSON.parse(debtIds);
                 const total = parseFloat(totalAmount);
@@ -2827,13 +2909,29 @@
                     const { value: amountStr } = await Swal.fire({
                         title: `${actionText} من/إلى ${person}`,
                         html: `إجمالي المبلغ المتبقي: <b>${formatCurrency(total, debtCurrency)}</b><br>أدخل المبلغ الذي تود ${actionText}ه.`,
-                        input: 'number',
+                        // START: التعديل المطلوب
+                        input: 'text',
+                        inputAttributes: { inputmode: 'decimal' },
+                        inputValue: total.toString(),
+                        didOpen: () => {
+                            const input = Swal.getInput();
+                            if(input) {
+                                formatNumberInput(input);
+                                input.addEventListener('input', () => formatNumberInput(input));
+                            }
+                        },
+                        // END: التعديل المطلوب
                         showCancelButton: true,
                         confirmButtonText: `تأكيد ال${actionText}`,
-                        inputValidator: (v) => (!v || v <= 0) ? 'أدخل مبلغ صحيح!' : (v > total) ? 'المبلغ أكبر من الدين!' : null
+                        inputValidator: (v) => {
+                            // START: التعديل المطلوب
+                            const amount = parseFormattedNumber(v);
+                            return (!v || amount <= 0) ? 'أدخل مبلغ صحيح!' : (amount > total) ? 'المبلغ أكبر من الدين!' : null
+                            // END: التعديل المطلوب
+                        }
                     });
                     if (!amountStr) return;
-                    paymentAmount = parseFloat(amountStr);
+                    paymentAmount = parseFormattedNumber(amountStr);
                     equivalentInDebtCurrency = paymentAmount;
 
                 } else {
@@ -2844,14 +2942,24 @@
                     const { value: amountStr } = await Swal.fire({
                         title: `مبلغ ال${actionText} (بـ ${paymentCurrency})`,
                         html: `المبلغ المتبقي يعادل تقريبًا: <b>${formatCurrency(totalInPaymentCurrency, paymentCurrency)}</b><br>أدخل المبلغ الذي سيتم دفعه بـ ${paymentCurrency}.`,
-                        input: 'number',
+                        // START: التعديل المطلوب
+                        input: 'text',
+                        inputAttributes: { inputmode: 'decimal' },
                         inputValue: totalInPaymentCurrency.toFixed(2),
+                        didOpen: () => {
+                            const input = Swal.getInput();
+                            if(input) {
+                                formatNumberInput(input);
+                                input.addEventListener('input', () => formatNumberInput(input));
+                            }
+                        },
+                        // END: التعديل المطلوب
                         showCancelButton: true,
                         confirmButtonText: `تأكيد ال${actionText}`,
-                        inputValidator: (v) => (!v || v <= 0) ? 'أدخل مبلغ صحيح!' : null
+                        inputValidator: (v) => (!v || parseFormattedNumber(v) <= 0) ? 'أدخل مبلغ صحيح!' : null
                     });
                     if (!amountStr) return;
-                    paymentAmount = parseFloat(amountStr);
+                    paymentAmount = parseFormattedNumber(amountStr);
                     equivalentInDebtCurrency = paymentAmount / rate;
                 }
 
@@ -2883,6 +2991,8 @@
                 updateAndRerender();
                 Swal.fire('تم بنجاح!', `تم ${actionText} مبلغ ${formatCurrency(paymentAmount, paymentCurrency)} بنجاح.`, 'success');
             }
+
+            
 
             async function getExchangeRateFromUser(fromCurrency, toCurrency, title = 'إدخال سعر الصرف') {
                 const { value: rate } = await Swal.fire({
@@ -2981,12 +3091,14 @@
                 else if (currentView === 'debts') showDebtModal();
             }
 
-            function handleTransactionFormSubmit(e) {
+                        function handleTransactionFormSubmit(e) {
                 e.preventDefault();
                 const id = document.getElementById('transaction-id').value;
                 const accountId = document.getElementById('transaction-account').value;
                 const account = getAccountById(accountId);
-                const amount = parseFloat(document.getElementById('transaction-amount').value);
+                // START: التعديل المطلوب
+                const amount = parseFormattedNumber(document.getElementById('transaction-amount').value);
+                // END: التعديل المطلوب
                 const type = document.getElementById('transaction-type').value;
 
                 if (type === 'expense') {
@@ -3004,10 +3116,8 @@
                     }
                 }
 
-                // === THIS IS THE FIX (Save Date & Time) ===
                 const transactionDate = document.getElementById('transaction-date').value;
                 const newTimestamp = dayjs(transactionDate).toISOString();
-                // ============================================
 
                 const newTx = {
                     type,
@@ -3032,20 +3142,20 @@
                 updateAndRerender();
             }
 
-            function handleDebtFormSubmit(e) {
+                        function handleDebtFormSubmit(e) {
                 e.preventDefault();
                 const id = document.getElementById('debt-id').value;
                 const accountId = document.getElementById('debt-account').value;
                 const account = getAccountById(accountId);
-                const amount = parseFloat(document.getElementById('debt-amount').value);
+                // START: التعديل المطلوب
+                const amount = parseFormattedNumber(document.getElementById('debt-amount').value);
+                // END: التعديل المطلوب
                 const type = document.getElementById('debt-type').value;
                 const person = document.getElementById('debt-person').value.trim();
                 const date = document.getElementById('debt-date').value;
                 const notes = document.getElementById('debt-notes').value.trim();
 
                 if (id) {
-                    // Note: Editing only person and notes is allowed for now to keep things simple.
-                    // To edit amount/date, it's better to delete and re-create to avoid accounting issues.
                     const index = state.debts.findIndex(d => d.id === id);
                     if (index > -1) {
                         state.debts[index].person = person;
@@ -3064,9 +3174,7 @@
                         }
                     }
 
-                    // === THIS IS THE FIX (Save Date & Time) ===
                     const timestamp = dayjs(date).toISOString();
-                    // ==========================================
 
                     const newDebt = {
                         id: generateId(), type, accountId, amount, originalAmount: amount, person, date, notes, status: 'unpaid', timestamp
@@ -3452,9 +3560,7 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
 
             function showTransactionModal(id = null) {
                 const form = document.getElementById('transaction-form'); form.reset();
-                // === THIS IS THE FIX ===
                 const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
-                // =======================
                 document.getElementById('transaction-account').innerHTML = accountOptions;
                 document.getElementById('transaction-type').innerHTML = `<option value="expense">مصروف</option><option value="income">دخل</option>`;
 
@@ -3475,21 +3581,37 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     document.getElementById('transaction-date').value = dayjs().format('YYYY-MM-DD');
                     populateCategories('expense');
                 }
+                
+                // START: التعديل المطلوب
+                const amountInput = document.getElementById('transaction-amount');
+                amountInput.type = 'text'; // تغيير النوع للسماح بالفواصل
+                amountInput.inputMode = 'decimal'; // لإظهار لوحة مفاتيح الأرقام على الجوال
+                amountInput.addEventListener('input', (e) => formatNumberInput(e.target));
+                // قم بتنسيق القيمة الأولية إذا كانت موجودة (في حالة التعديل)
+                formatNumberInput(amountInput);
+                // END: التعديل المطلوب
+
                 document.getElementById('transaction-type').onchange = (e) => populateCategories(e.target.value);
                 transactionModal.classList.remove('hidden'); setTimeout(() => transactionModal.querySelector('.modal-content').classList.remove('scale-95'), 10);
             }
 
-            function showDebtModal() {
+                        function showDebtModal() {
                 const form = document.getElementById('debt-form');
                 form.reset();
                 document.getElementById('debt-modal-title').textContent = 'إضافة دين جديد';
                 document.getElementById('debt-id').value = '';
 
                 const accountOptions = state.settings.accounts.map(acc => `<option value="${acc.id}">${acc.name} (${acc.currency})</option>`).join('');
-                // ============================
-
                 document.getElementById('debt-account').innerHTML = accountOptions;
                 document.getElementById('debt-date').value = dayjs().format('YYYY-MM-DD');
+
+                // START: التعديل المطلوب
+                const amountInput = document.getElementById('debt-amount');
+                amountInput.type = 'text'; // تغيير النوع للسماح بالفواصل
+                amountInput.inputMode = 'decimal'; // لإظهار لوحة مفاتيح الأرقام على الجوال
+                amountInput.addEventListener('input', (e) => formatNumberInput(e.target));
+                // END: التعديل المطلوب
+
                 debtModal.classList.remove('hidden');
                 setTimeout(() => debtModal.querySelector('.modal-content').classList.remove('scale-95'), 10);
             }
