@@ -400,16 +400,28 @@
 
             // === UTILITY FUNCTIONS ===
             const generateId = () => `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            const formatCurrency = (amount, currency) => {
-                // A rule to allow fractions for all currencies as requested.
-                const options = {
-                    style: 'currency',
-                    currency: currency,
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                };
-                return new Intl.NumberFormat('en-US', options).format(amount);
-            };
+           const formatCurrency = (amount, currency, symbol = "") => {
+  const options = {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  };
+
+  try {
+    // جرّب استخدام Intl بالعملة المدخلة
+    return new Intl.NumberFormat("en-US", {
+      ...options,
+      style: "currency",
+      currency
+    }).format(amount);
+  } catch (e) {
+    console.warn("Invalid currency code:", currency, "-> fallback to symbol");
+
+    // fallback: عرض رقم عادي + رمز/كود نصي
+    const num = new Intl.NumberFormat("en-US", options).format(amount);
+    return symbol ? `${symbol} ${num}` : `${currency} ${num}`;
+  }
+};
+
             const getAccountById = (id) => state.settings.accounts.find(acc => acc.id === id);
             const getCategoryById = (id) => state.categories.find(c => c.id === id) || { name: 'غير معروف', icon: '❓' };
             const getUniqueCurrencies = () => [...new Set(state.settings.accounts.map(acc => acc.currency))];
