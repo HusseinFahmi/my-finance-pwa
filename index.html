@@ -3938,13 +3938,16 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                 }
             }
 
-            // ============================================================================
+            // // ============================================================================
             // ==================== || نظام المزامنة مع GOOGLE DRIVE || ====================
             // ============================================================================
-            
+
             // ⚠️ ملاحظة هامة: يجب عليك وضع Client ID الخاص بك هنا ليعمل الكود
-            const GOOGLE_CLIENT_ID = "375769248543-mrp680mq6csgb3v538n60amlp7amvm9b.apps.googleusercontent.com";
+            const GOOGLE_CLIENT_ID = '375769248543-mrp680mq6csgb3v538n60amlp7amvm9b.apps.googleusercontent.com';
+
+            // يمكنك ترك DISCOVERY_DOC لو تحتاجه لاحقًا، لكنه غير مستخدم في هذا الكود حاليا
             const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+
             const SCOPES = 'https://www.googleapis.com/auth/drive.file';
             const BACKUP_FILE_NAME = 'SmartFinance_Backup.json';
 
@@ -3955,7 +3958,10 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     return Swal.fire('خطأ في الاتصال', 'لم يتم تحميل مكتبة جوجل. تأكد من اتصالك بالإنترنت.', 'error');
                 }
 
-                if (GOOGLE_CLIENT_ID === 'ضع_معرف_العميل_هنا_CLIENT_ID.apps.googleusercontent.com') {
+                if (
+                    !GOOGLE_CLIENT_ID ||
+                    GOOGLE_CLIENT_ID === 'ضع_معرف_العميل_هنا_CLIENT_ID.apps.googleusercontent.com'
+                ) {
                     return Swal.fire('إعداد مطلوب', 'يجب إعداد GOOGLE_CLIENT_ID في الكود لتعمل هذه الميزة.', 'warning');
                 }
 
@@ -3963,47 +3969,75 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     client_id: GOOGLE_CLIENT_ID,
                     scope: SCOPES,
                     callback: async (tokenResponse) => {
-                        if (tokenResponse && tokenResponse.access_token) {
-                            if (action === 'backup') await performDriveBackup(tokenResponse.access_token);
-                            if (action === 'restore') await performDriveRestore(tokenResponse.access_token);
+                        try {
+                            if (tokenResponse && tokenResponse.access_token) {
+                                if (action === 'backup') await performDriveBackup(tokenResponse.access_token);
+                                if (action === 'restore') await performDriveRestore(tokenResponse.access_token);
+                            } else {
+                                Swal.fire('خطأ!', 'لم يتم الحصول على access token من Google.', 'error');
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            Swal.fire('خطأ!', 'حدث خطأ غير متوقع أثناء المصادقة.', 'error');
                         }
                     },
                 });
+
                 tokenClient.requestAccessToken({ prompt: 'consent' });
             }
 
-            // دالة البحث عن ملف النسخة الاحتياطية في درايف
-            async function findBackupFileId(accessToken) {
+            // ✅ دالة ترجع ملف النسخة الاحتياطية (ملف واحد فقط - الأحدث)
+            async function findBackupFile(accessToken) {
                 const query = encodeURIComponent(`name='${BACKUP_FILE_NAME}' and trashed=false`);
-                const response = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id, modifiedTime)`, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                const url =
+                    `https://www.googleapis.com/drive/v3/files` +
+                    `?q=${query}` +
+                    `&fields=files(id,modifiedTime,name)` +
+                    `&orderBy=modifiedTime desc` +
+                    `&pageSize=1`;
+
+                const response = await fetch(url, {
+                    headers: { Authorization: `Bearer ${accessToken}` }
                 });
+
+                // إظهار تفاصيل الخطأ الحقيقي إن وجد
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    console.error("Drive find file error:", err);
+                    throw new Error(err?.error?.message || 'فشل البحث عن ملف النسخة الاحتياطية.');
+                }
+
                 const data = await response.json();
-                return data.files && data.files.length > 0 ? data.files : null;
+                return (data.files && data.files.length) ? data.files[0] : null;
             }
 
-            // دالة رفع النسخة (Backup)
+            // ✅ دالة رفع النسخة (Backup)
             async function performDriveBackup(accessToken) {
-                Swal.fire({ title: 'جاري الرفع...', text: 'يتم الآن مزامنة بياناتك مع حسابك في جوجل درايف.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                
+                Swal.fire({
+                    title: 'جاري الرفع...',
+                    text: 'يتم الآن مزامنة بياناتك مع حسابك في جوجل درايف.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
                 try {
                     const fileContent = JSON.stringify(state);
                     const fileMetadata = { name: BACKUP_FILE_NAME, mimeType: 'application/json' };
-                    let fileId = null;
 
-                    const existingFile = await findBackupFileId(accessToken);
-                    if (existingFile) fileId = existingFile.id;
+                    // هل يوجد ملف سابق؟
+                    const existingFile = await findBackupFile(accessToken);
+                    const fileId = existingFile ? existingFile.id : null;
 
-                    const url = fileId 
-                        ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart` // تحديث ملف موجود
-                        : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`; // إنشاء ملف جديد
-                    
+                    const url = fileId
+                        ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+                        : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+
                     const method = fileId ? 'PATCH' : 'POST';
-                    
+
                     // تجهيز الملف للرفع (Multipart)
                     const boundary = '-------314159265358979323846';
-                    const delimiter = "\r\n--" + boundary + "\r\n";
-                    const close_delim = "\r\n--" + boundary + "--";
+                    const delimiter = `\r\n--${boundary}\r\n`;
+                    const close_delim = `\r\n--${boundary}--`;
 
                     const multipartRequestBody =
                         delimiter +
@@ -4015,36 +4049,44 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                         close_delim;
 
                     const response = await fetch(url, {
-                        method: method,
+                        method,
                         headers: {
-                            'Authorization': `Bearer ${accessToken}`,
-                            'Content-Type': `multipart/related; boundary=${boundary}`
+                            Authorization: `Bearer ${accessToken}`,
+                            'Content-Type': `multipart/related; boundary=${boundary}`,
                         },
-                        body: multipartRequestBody
+                        body: multipartRequestBody,
                     });
 
-                    if (response.ok) {
-                        Swal.fire('تمت المزامنة!', 'تم حفظ نسختك الاحتياطية في جوجل درايف بأمان.', 'success');
-                    } else {
-                        throw new Error('فشل الرفع');
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        console.error("Drive upload error:", err);
+                        throw new Error(err?.error?.message || 'فشل الرفع');
                     }
+
+                    Swal.fire('تمت المزامنة!', 'تم حفظ نسختك الاحتياطية في جوجل درايف بأمان.', 'success');
                 } catch (error) {
                     console.error(error);
-                    Swal.fire('خطأ!', 'حدث خطأ أثناء رفع النسخة الاحتياطية.', 'error');
+                    Swal.fire('خطأ!', `حدث خطأ أثناء رفع النسخة الاحتياطية.\n${error.message || ''}`, 'error');
                 }
             }
 
-            // دالة استرجاع النسخة (Restore)
+            // ✅ دالة استرجاع النسخة (Restore)
             async function performDriveRestore(accessToken) {
-                Swal.fire({ title: 'جاري الاسترجاع...', text: 'يتم الآن جلب بياناتك من جوجل درايف.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                Swal.fire({
+                    title: 'جاري الاسترجاع...',
+                    text: 'يتم الآن جلب بياناتك من جوجل درايف.',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
 
                 try {
-                    const existingFile = await findBackupFileId(accessToken);
+                    const existingFile = await findBackupFile(accessToken);
+
                     if (!existingFile) {
                         return Swal.fire('لا يوجد ملف', 'لم يتم العثور على نسخة احتياطية سابقة باسم التطبيق في حسابك.', 'info');
                     }
 
-                    // تأكيد الاسترجاع لأنه سيحذف البيانات الحالية
+                    // تأكيد الاسترجاع لأنه سيستبدل البيانات الحالية
                     const confirm = await Swal.fire({
                         title: 'تأكيد الاسترجاع',
                         text: `تم العثور على نسخة بتاريخ: ${dayjs(existingFile.modifiedTime).format('YYYY-MM-DD HH:mm')}. هل أنت متأكد من استبدال بياناتك الحالية بها؟`,
@@ -4055,30 +4097,35 @@ AAEAAAARAQAABAAQR0RFRgBUbZgAAAGcAAAAVEdQT1Myf1fjAAABrAAAAFRHU1VCtTEc5gAAAeAAAAAo
                     });
 
                     if (!confirm.isConfirmed) return;
-                    
+
                     Swal.fire({ title: 'جاري التحميل...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
                     const response = await fetch(`https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`, {
-                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                        headers: { Authorization: `Bearer ${accessToken}` }
                     });
 
-                    if (!response.ok) throw new Error('فشل التحميل');
+                    if (!response.ok) {
+                        const errText = await response.text().catch(() => '');
+                        console.error("Drive download error:", errText);
+                        throw new Error('فشل تحميل ملف النسخة الاحتياطية من درايف.');
+                    }
 
                     const importedState = await response.json();
-                    
+
                     if (importedState && importedState.settings && importedState.transactions) {
                         state = importedState;
                         saveState();
                         setTheme(state.settings.theme || 'light');
                         buildNavigation();
                         updateAndRerender('dashboard');
+
                         Swal.fire('نجاح!', 'تم استرجاع بياناتك بنجاح من جوجل درايف.', 'success');
                     } else {
-                        throw new Error("ملف البيانات غير صالح.");
+                        throw new Error('ملف البيانات غير صالح أو لا يطابق هيكل التطبيق.');
                     }
                 } catch (error) {
                     console.error(error);
-                    Swal.fire('خطأ!', 'حدث خطأ أثناء استرجاع النسخة الاحتياطية.', 'error');
+                    Swal.fire('خطأ!', `حدث خطأ أثناء استرجاع النسخة الاحتياطية.\n${error.message || ''}`, 'error');
                 }
             }
 
